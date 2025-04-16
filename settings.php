@@ -32,6 +32,7 @@ if ($hassiteconfig) {
     $provideroptions = [
         'OpenAI' => 'OpenAI',
         'Azure' => 'Azure',
+        'local_ai_manager' => 'Plugin "AI Manager"',
     ];
     $settings->add(new admin_setting_configselect(
         'qbank_genai/provider',

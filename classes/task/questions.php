@@ -90,24 +90,24 @@ class questions extends \core\task\adhoc_task {
             $DB->update_record('qbank_genai', $update);
 
             switch ($dbrecord->qformat) {
-                case "gift":
+                case self::PARAM_GENAI_GIFT:
                     $created = \qbank_genai\local\gift::parse_questions(
                         $dbrecord->category,
                         $questions,
                         $dbrecord->numofquestions,
                         $dbrecord->userid,
-                        $dbrecord->aiidentifier,
+                        !empty($dbrecord->aiidentifier),
                         $dbrecord->id
                     );
                     break;
 
-                case "xml":
+                case self::PARAM_GENAI_XML:
                     $created = \qbank_genai\local\xml::parse_questions(
                         $dbrecord->category,
                         $questions,
                         $dbrecord->numofquestions,
                         $dbrecord->userid,
-                        $dbrecord->aiidentifier,
+                        !empty($dbrecord->aiidentifier),
                         $dbrecord->id
                     );
                     break;
@@ -120,6 +120,7 @@ class questions extends \core\task\adhoc_task {
         if (!$created) {
             // Insert error info to DB.
             $update = new \stdClass();
+            $update->id = $genaiid;
             $update->tries = $i - 1;
             $update->timemodified = time();
             $update->success = 0;

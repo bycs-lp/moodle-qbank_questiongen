@@ -23,7 +23,6 @@
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-
 /**
  * Get questions from the API.
  *
@@ -31,7 +30,7 @@
  * @return object questions of generated questions
  */
 function qbank_genai_get_questions($dataobject) {
-
+    global $USER;
     // Build primer.
     $primer = $dataobject->primer;
     $primer .= "Write $dataobject->numofquestions questions.";
@@ -47,26 +46,28 @@ function qbank_genai_get_questions($dataobject) {
     $example = str_replace("\r", " ", $example);
 
     $messages = [
-        [
-            "role" => "system",
-            "content" => "' . $primer . '",
-        ],
-        [
-            "role" => "system",
-            "name" => "example_user",
-            "content" => "' . $instructions . '",
-        ],
-        [
-            "role" => "system",
-            "name" => "example_assistant",
-            "content" => "' . $example . '",
-        ],
-        [
-            "role" => "user",
-            "content" => 'Now, create ' . $dataobject->numofquestions
-                . ' questions for me based on this topic: "' . qbank_genai_escape_json($story) . '"',
-        ]
+            [
+                    "role" => "system",
+                    "content" => "' . $primer . '",
+            ],
+            [
+                    "role" => "system",
+                    "name" => "example_user",
+                    "content" => "' . $instructions . '",
+            ],
+            [
+                    "role" => "system",
+                    "name" => "example_assistant",
+                    "content" => "' . $example . '",
+            ],
+            [
+                    "role" => "user",
+                    "content" => 'Now, create ' . $dataobject->numofquestions
+                            . ' questions for me based on this topic: "' . qbank_genai_escape_json($story) . '"',
+            ]
     ];
+
+    $generatedquestiontext = '';
 
     $model = get_config('qbank_genai', 'model');
     $provider = get_config('qbank_genai', 'provider'); // OpenAI (default) or Azure
@@ -74,46 +75,69 @@ function qbank_genai_get_questions($dataobject) {
     $headers = [
             'Content-Type' => 'application/json',
     ];
-    if ($provider === 'Azure') {
-        // If the provider is Azure, use the Azure API endpoint and Azure-specific HTTP header
-        $url = get_config('qbank_genai', 'azure_api_endpoint'); // Use the Azure API endpoint from settings
-        $headers['api-key'] = $key;
+    if ($provider === 'local_ai_manager') {
+
+        $messages = [
+                [
+                        'sender' => 'system',
+                        'message' => '"' . $primer . '"',
+                ],
+                [
+                        'sender' => 'system',
+                        'message' => '"' . $instructions . '"',
+                ],
+                [
+                        'sender' => 'system',
+                        'message' => '"' . $example . '"',
+                ],
+                [
+                        'sender' => 'user',
+                        'message' => 'Now, create ' . $dataobject->numofquestions
+                                . ' questions for me based on this topic: "' . qbank_genai_escape_json($story) . '"',
+                ]
+        ];
+
+        $manager = new \local_ai_manager\manager('questiongeneration');
+        $lastmessage = array_pop($messages);
+        $result = $manager->perform_request($lastmessage['message'], 'qbank_genai', SYSCONTEXTID, ['conversationcontext' => $messages]);
+        if ($result->get_code() === 200) {
+            $generatedquestiontext = $result->get_content();
+        } else {
+            mtrace('Question generation failed. The external LLM returned code ' . $result->get_code() . ':');
+            mtrace($result->get_errormessage());
+            debugging($result->get_debuginfo(), DEBUG_DEVELOPER);
+        }
     } else {
-        // If the provider is not Azure, use the OpenAI API URL and OpenAI style HTTP header
-        $url = 'https://api.openai.com/v1/chat/completions';
-        $headers['Authorization'] = 'Bearer ' . $key;
+        if ($provider === 'Azure') {
+            // If the provider is Azure, use the Azure API endpoint and Azure-specific HTTP header
+            $url = get_config('qbank_genai', 'azure_api_endpoint'); // Use the Azure API endpoint from settings
+            $headers['api-key'] = $key;
+        } else {
+            // If the provider is not Azure, use the OpenAI API URL and OpenAI style HTTP header
+            $url = 'https://api.openai.com/v1/chat/completions';
+            $headers['Authorization'] = 'Bearer ' . $key;
+        }
+
+        $data = json_encode([
+                'model' => $model,
+                'messages' => $messages,
+        ]);
+
+        $httpclient = new \core\http_client();
+        $options['headers'] = $headers;
+        $options['body'] = $data;
+
+        $result = json_decode($httpclient->post($url, $options)->getBody()->getContents());
+
+        $generatedquestiontext = $result->choices[0]->message->content;
     }
-
-    $data = json_encode([
-        'model' => $model,
-        'messages' =>  $messages,
-    ]);
-
-    $httpclient = new \core\http_client();
-    $options['headers'] = $headers;
-    $options['body'] = $data;
-
-    $result = json_decode($httpclient->post($url, $options)->getBody()->getContents());
-
-    $questions = new stdClass(); // The questions object.
-    if (isset($result->choices[0]->message->content)) {
-        $questions->text = $result->choices[0]->message->content;
-        $questions->prompt = $story;
-    } else {
-        $questions = $result;
-        $questions->prompt = $story;
-    }
-
-    // Print error message of ChatGPT API (if there are).
-    if (isset($questions->error->message)) {
-        $error = $questions->error->message;
-
-        // Print error message to cron/adhoc output.
-        echo "[qbank_genai] Error : $error.\n";
-    }
+    $questions = new stdClass();
+    $questions->text = $generatedquestiontext;
+    $questions->prompt = $story;
 
     return $questions;
 }
+
 /**
  * Create questions from data got from ChatGPT output.
  *

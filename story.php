@@ -51,7 +51,7 @@ if ($contexts === null) { // Need to get the course from the chosen category.
         list($module, $cm) = get_module_from_cmid($thiscontext->instanceid);
         require_login($cm->course, false, $cm);
     }
-    $contexts->require_one_edit_tab_cap($edittab);
+    $contexts->require_one_edit_tab_cap('questions');
 }
 
 $PAGE->set_url($thispageurl);
@@ -85,6 +85,7 @@ if ($mform->is_cancelled()) {
     $courseid = $cm->course;
     $task = new \qbank_genai\task\questions();
     if ($task) {
+        $task->set_userid($USER->id);
 
         $uniqid = uniqid($USER->id, true);
 
@@ -95,7 +96,7 @@ if ($mform->is_cancelled()) {
         // $dbrecord->course = $courseid;
         $dbrecord->numoftries = get_config('qbank_genai', 'numoftries');
         $dbrecord->numofquestions = $data->numofquestions;
-        $dbrecord->aiidentifier = $data->addidentifier;
+        $dbrecord->aiidentifier = !empty($data->addidentifier) ? 1 : 0;
         $dbrecord->category = $qbankcategory->id;
         $dbrecord->userid = $USER->id;
         $dbrecord->qformat = $data->presetformat;
