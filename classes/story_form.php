@@ -43,10 +43,18 @@ class story_form extends \moodleform {
 
         $mform = $this->_form;
         $contexts = $this->_customdata['contexts']->having_cap('moodle/question:add');
+        $contexts = array_filter($contexts, fn ($context) => $context->contextlevel !== CONTEXT_SYSTEM && $context->contextlevel !== CONTEXT_COURSECAT);
 
         // Question category.
         $mform->addElement('questioncategory', 'category', get_string('category', 'question'), ['contexts' => $contexts]);
         $mform->addHelpButton('category', 'category', 'qbank_genai');
+
+        $modulecontexts = array_filter($contexts, fn($context) => $context->contextlevel === CONTEXT_MODULE);
+        if (count($modulecontexts) === 0) {
+            $coursecontext = array_values(array_filter($contexts, fn($context) => $context->contextlevel === CONTEXT_COURSE))[0];
+            $mform->addElement('hidden', 'courseid', $coursecontext->instanceid);
+            $mform->setType('courseid', PARAM_INT);
+        }
 
         // Number of questions.
         $defaultnumofquestions = 4;
@@ -105,20 +113,22 @@ class story_form extends \moodleform {
         $mform->addElement('checkbox', 'editpreset', get_string('editpreset', 'qbank_genai'));
         $mform->addElement('html', get_string('shareyourprompts', 'qbank_genai'));
 
-        // Format.
-        $formatoptions = [
-            \qbank_genai\task\questions::PARAM_GENAI_GIFT => get_string('gift_format', 'qbank_genai'),
-            \qbank_genai\task\questions::PARAM_GENAI_XML => get_string('xml_format', 'qbank_genai'),
-        ];
-        $mform->addElement('select', 'presetformat', get_string('presetformat', 'qbank_genai'), $formatoptions);
-        $mform->setDefault('presetformat', \qbank_genai\task\questions::PARAM_GENAI_GIFT);
-        $mform->addHelpButton('presetformat', 'example', 'qbank_genai');
-        $mform->hideif('presetformat', 'editpreset');
 
         // Create elements for all presets.
         for ($i = 0; $i < 10; $i++) {
 
             $primer = $i + 1;
+
+            // Format.
+            $formatoptions = [
+                    \qbank_genai\task\questions::PARAM_GENAI_GIFT => get_string('gift_format', 'qbank_genai'),
+                    \qbank_genai\task\questions::PARAM_GENAI_XML => get_string('xml_format', 'qbank_genai'),
+            ];
+            $mform->addElement('select', 'presetformat' . $i, get_string('presetformat', 'qbank_genai'), $formatoptions);
+            $mform->setDefault('presetformat' . $i, get_config('qbank_genai', 'presetformat' . $primer));
+            $mform->addHelpButton('presetformat' . $i, 'example', 'qbank_genai');
+            $mform->hideif('presetformat' . $i, 'editpreset');
+            $mform->hideif('presetformat' . $i, 'preset', 'neq', $i);
 
             // Primer.
             $mform->addElement(

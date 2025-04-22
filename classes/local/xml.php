@@ -26,6 +26,9 @@
 
 namespace qbank_genai\local;
 
+use qbank_managecategories\question_categories;
+use qbank_managecategories\question_category_object_test;
+
 /**
  * Class to handle xml format.
  *
@@ -56,7 +59,7 @@ class xml {
         int $genaiid
     ) {
 
-        global $CFG;
+        global $CFG, $DB;
 
         // Work out if this is an uploaded file.
         // Or one from the filesarea.
@@ -84,8 +87,9 @@ class xml {
         $qformat = new $classname();
 
         // Load data into class.
-        $qformat->setCategory($categoryid);
-        $qformat->setContexts($contexts->having_one_edit_tab_cap('import'));
+        $category = $DB->get_record('question_categories', ['id' => $categoryid]);
+        $qformat->setCategory($category);
+        $qformat->setContexts([\context_helper::instance_by_id($category->contextid)]);
         $qformat->setFilename($importfile);
         $qformat->setRealfilename($realfilename);
         // $qformat->setMatchgrades($form->matchgrades);

@@ -118,7 +118,7 @@ if ($hassiteconfig) {
             get_string('presetprimer', 'qbank_genai'),
             get_string('primer_help', 'qbank_genai'),
             get_string('presetprimerdefault' . $i, 'qbank_genai'),
-            PARAM_TEXT,
+            PARAM_RAW,
             4000
         ));
 
@@ -128,7 +128,7 @@ if ($hassiteconfig) {
             get_string('presetinstructions', 'qbank_genai'),
             get_string('instructions_help', 'qbank_genai'),
             get_string('presetinstructionsdefault' . $i, 'qbank_genai'),
-            PARAM_TEXT,
+            PARAM_RAW,
             4000
         ));
 
@@ -151,7 +151,7 @@ if ($hassiteconfig) {
             get_string('presetexample', 'qbank_genai'),
             get_string('example_help', 'qbank_genai'),
             get_string('presetexampledefault' . $i, 'qbank_genai'),
-            PARAM_TEXT,
+            PARAM_RAW,
             4000
         ));
     }

@@ -51,7 +51,7 @@ if ($contexts === null) { // Need to get the course from the chosen category.
         list($module, $cm) = get_module_from_cmid($thiscontext->instanceid);
         require_login($cm->course, false, $cm);
     }
-    $contexts->require_one_edit_tab_cap('questions');
+    $contexts->require_one_edit_tab_cap('import');
 }
 
 $PAGE->set_url($thispageurl);
@@ -82,7 +82,11 @@ if ($mform->is_cancelled()) {
     // Call the adhoc task.
     // we need the courseid anyway so get it from cmid
     $cm = get_coursemodule_from_id('', $cmid);
-    $courseid = $cm->course;
+    if ($cm) {
+        $courseid = $cm->course;
+    } else {
+        $courseid = required_param('courseid', PARAM_INT);
+    }
     $task = new \qbank_genai\task\questions();
     if ($task) {
         $task->set_userid($USER->id);
@@ -99,7 +103,7 @@ if ($mform->is_cancelled()) {
         $dbrecord->aiidentifier = !empty($data->addidentifier) ? 1 : 0;
         $dbrecord->category = $qbankcategory->id;
         $dbrecord->userid = $USER->id;
-        $dbrecord->qformat = $data->presetformat;
+        $dbrecord->qformat = $data->{'presetformat' . $preset};
         $dbrecord->timecreated = time();
         $dbrecord->timemodified = 0;
         $dbrecord->tries = 0;
@@ -137,6 +141,7 @@ if ($mform->is_cancelled()) {
         'wwwroot' => $CFG->wwwroot,
         'uniqid' => $uniqid,
         'userid' => $USER->id,
+        'courseid' => $courseid,
         'cron' => $cronoverdue,
     ];
     // Load the ready template.
