@@ -24,18 +24,90 @@
  */
 
 define('CLI_SCRIPT', true);
-require(__DIR__ . '/../../../config.php');
+require(__DIR__ . '/../../../../config.php');
 require_once(__DIR__ . '/../locallib.php');
+require_once(__DIR__ . '/../../../engine/bank.php');
 
-$gift = "
-::Question1:: My interesting questionText
-{
-    = 1
-    ~ 2
-    ~ 3
-    ~ 4
-    ~ 5
-}";
+global $DB;
+$DB->delete_records('qbank_genai');
 
-$question = qbank_genai_create_questions(2, null, $gift, 1, 3);
-var_dump($question);
+$qbankobject = new \stdClass();
+$qbankobject->qformat = 'moodlexml';
+$qbankobject->numofquestions = 2;
+$qbankobject->category = 140;
+$qbankobject->story = 'relativity theory';
+$qbankobject->numoftries = 1;
+$qbankobject->userid = 44;
+$qbankobject->llmresponse = '';
+$qbankobject->tries = 0;
+$qbankobject->success = '';
+$qbankobject->uniqid = '446818cd94845c21.21066595';
+$qbankobject->primer = 'You are a helpful teacher\'s assistant that creates multiple choice questions based on the topics given by the user.';
+$qbankobject->instructions = 'Please write a multiple choice question in English language in XML format on a topic I will specify to you separately. Only return the plain XML, do not apply any formatting. Use the example provided for generating the questions in XML format. Inside the <quiz> tags you can specifiy multiple questions wrapped by <question></question>. Replace the string "Question title" in the example by the title of the question, the string "Question text" with the text of the question. Replace the possible answers "Choice 1", "Choice 2", "Choice 3" and "Choice 4" in the example with the options of the generated question. The option that is correct has to have the attribute fraction="100" in the opening "answer" tag, the other wrong options have to have fraction="0".';
+$qbankobject->example = '<?xml version="1.0" encoding="UTF-8"?>
+<quiz>
+  <question type="multichoice">
+    <name>
+      <text>Question title</text>
+    </name>
+    <questiontext format="html">
+      <text><![CDATA[<p>Question text</p>]]></text>
+    </questiontext>
+    <generalfeedback format="html">
+      <text><![CDATA[<p>General feedback</p>]]></text>
+    </generalfeedback>
+    <defaultgrade>1</defaultgrade>
+    <penalty>0</penalty>
+    <hidden>0</hidden>
+    <idnumber></idnumber>
+    <single>true</single>
+    <shuffleanswers>false</shuffleanswers>
+    <answernumbering>none</answernumbering>
+    <showstandardinstruction>0</showstandardinstruction>
+    <correctfeedback format="html">
+      <text><![CDATA[<p>The answer is correct.</p>]]></text>
+    </correctfeedback>
+    <partiallycorrectfeedback format="html">
+      <text><![CDATA[<p>The answer is partially correct.</p>]]></text>
+    </partiallycorrectfeedback>
+    <incorrectfeedback format="html">
+      <text><![CDATA[<p>The answer is wrong.</p>]]></text>
+    </incorrectfeedback>
+    <shownumcorrect/>
+    <answer fraction="0" format="html">
+      <text><![CDATA[<p>Choice 1</p>]]></text>
+      <feedback format="html">
+        <text><![CDATA[<p>Feedback 1</p>]]></text>
+      </feedback>
+    </answer>
+    <answer fraction="0" format="html">
+      <text><![CDATA[<p>Choice 2</p>]]></text>
+      <feedback format="html">
+        <text><![CDATA[<p>Feedback 2</p>]]></text>
+      </feedback>
+    </answer>
+    <answer fraction="100" format="html">
+      <text><![CDATA[<p>Choice 3</p>]]></text>
+      <feedback format="html">
+        <text><![CDATA[<p>Feedback 3</p>]]></text>
+      </feedback>
+    </answer>
+    <answer fraction="0" format="html">
+      <text><![CDATA[<p>Choice 4</p>]]></text>
+      <feedback format="html">
+        <text><![CDATA[<p>Feedback 4</p>]]></text>
+      </feedback>
+    </answer>
+  </question>
+</quiz>';
+$recordid = $DB->insert_record('qbank_genai', $qbankobject);
+
+
+$user = \core_user::get_user(44);
+\core\session\manager::init_empty_session();
+\core\session\manager::set_user($user);
+
+$task = new \qbank_genai\task\questions();
+$task->set_userid(44);
+$task->set_custom_data(['genaiid' => $recordid]);
+$task->execute();
