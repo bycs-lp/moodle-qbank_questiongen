@@ -35,12 +35,3 @@ $functions = [
         'ajax'        => true,
     ],
 ];
-
-// Define the services and functions.
-$services = [
-    'AI Questions Service' => [
-            'functions' => ['qbank_questiongen_check_state'],
-            'restrictedusers' => 0,
-            'enabled' => 1,
-    ],
-];
