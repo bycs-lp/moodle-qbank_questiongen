@@ -17,20 +17,20 @@
 /**
  * Plugin entrypoint for qbank.
  *
- * @package    qbank_genai
+ * @package    qbank_questiongen
  * @copyright  ISB Bayern, 2024
  * @author     Dr. Peter Mayer
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace qbank_genai;
+namespace qbank_questiongen;
 
 use core_question\local\bank\navigation_node_base;
 
 /**
  * Class plugin_feature.
  *
- * @package    qbank_genai
+ * @package    qbank_questiongen
  * @copyright  ISB Bayern, 2024
  * @author     Dr. Peter Mayer
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later

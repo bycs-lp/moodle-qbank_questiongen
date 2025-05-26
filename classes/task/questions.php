@@ -17,13 +17,13 @@
 /**
  * Adhoc task for questions generation.
  *
- * @package     qbank_genai
+ * @package     qbank_questiongen
  * @category    admin
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-namespace qbank_genai\task;
+namespace qbank_questiongen\task;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -32,7 +32,7 @@ require_once(__DIR__ . '/../../locallib.php');
 /**
  * The question generator adhoc task.
  *
- * @package     qbank_genai
+ * @package     qbank_questiongen
  * @category    admin
  */
 class questions extends \core\task\adhoc_task {
@@ -51,14 +51,14 @@ class questions extends \core\task\adhoc_task {
     public function execute() {
         global $DB;
         // Read numoftries from settings.
-        $numoftries = get_config('qbank_genai', 'numoftries');
+        $numoftries = get_config('qbank_questiongen', 'numoftries');
 
         // Get the data from the task.
         $data = $this->get_custom_data();
 
         $genaiid = $data->genaiid;
         mtrace($genaiid);
-        $dbrecord = $DB->get_record('qbank_genai', ['id' => $genaiid]);
+        $dbrecord = $DB->get_record('qbank_questiongen', ['id' => $genaiid]);
 
         // If there is no record any more, we can drop this process silently. But normally this should not happen.
         if (empty($dbrecord)) {
@@ -72,8 +72,8 @@ class questions extends \core\task\adhoc_task {
         $error = ''; // Error message.
         $update = new \stdClass();
 
-        mtrace("[qbank_genai] Creating Questions with AI...\n");
-        mtrace("[qbank_genai] Try $i of $numoftries...\n");
+        mtrace("[qbank_questiongen] Creating Questions with AI...\n");
+        mtrace("[qbank_questiongen] Try $i of $numoftries...\n");
 
         while (!$created && $i <= $numoftries) {
 
@@ -81,17 +81,17 @@ class questions extends \core\task\adhoc_task {
             $update->id = $genaiid;
             $update->tries = $i;
             $update->datemodified = time();
-            $DB->update_record('qbank_genai', $update);
+            $DB->update_record('qbank_questiongen', $update);
 
             // Get questions from AI API.
-            $questions = \qbank_genai_get_questions($dbrecord);
+            $questions = \qbank_questiongen_get_questions($dbrecord);
 
             $update->llmresponse = $questions->text;
-            $DB->update_record('qbank_genai', $update);
+            $DB->update_record('qbank_questiongen', $update);
 
             switch ($dbrecord->qformat) {
                 case self::PARAM_GENAI_GIFT:
-                    $created = \qbank_genai\local\gift::parse_questions(
+                    $created = \qbank_questiongen\local\gift::parse_questions(
                         $dbrecord->category,
                         $questions,
                         $dbrecord->numofquestions,
@@ -102,7 +102,7 @@ class questions extends \core\task\adhoc_task {
                     break;
 
                 case self::PARAM_GENAI_XML:
-                    $created = \qbank_genai\local\xml::parse_questions(
+                    $created = \qbank_questiongen\local\xml::parse_questions(
                         $dbrecord->category,
                         $questions,
                         $dbrecord->numofquestions,
@@ -124,13 +124,13 @@ class questions extends \core\task\adhoc_task {
             $update->tries = $i - 1;
             $update->timemodified = time();
             $update->success = 0;
-            $DB->update_record('qbank_genai', $update);
+            $DB->update_record('qbank_questiongen', $update);
         }
 
         // Print error message.
         // It will be shown on cron/adhoc output (file/whatever).
         if ($error != '') {
-            echo '[qbank_genai adhoc_task]' . $error;
+            echo '[qbank_questiongen adhoc_task]' . $error;
         }
     }
 }

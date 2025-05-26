@@ -36,10 +36,10 @@ define(['jquery', 'core/ajax', 'core/templates'], function($, Ajax, Templates) {
      *  checkState(intervalId);
      */
     function checkState(intervalId) {
-        var userid = $("#qbank_genai_userid")[0].outerText;
-        var uniqid = $("#qbank_genai_uniqid")[0].outerText;
+        var userid = $("#qbank_questiongen_userid")[0].outerText;
+        var uniqid = $("#qbank_questiongen_uniqid")[0].outerText;
         var promises = Ajax.call([{
-            methodname: 'qbank_genai_check_state',
+            methodname: 'qbank_questiongen_check_state',
             args: {
                 userid: userid,
                 uniqid: uniqid
@@ -59,11 +59,11 @@ define(['jquery', 'core/ajax', 'core/templates'], function($, Ajax, Templates) {
                 } else {
                     var error = '';
                 }
-                Templates.render('qbank_genai/success', { success: successmessage,
+                Templates.render('qbank_questiongen/success', { success: successmessage,
                                                                 wwwroot: M.cfg.wwwroot,
                                                                 error: error,
                                                                 single: single }).then(function(html) {
-                    $("#qbank_genai_success").html(html);
+                    $("#qbank_questiongen_success").html(html);
                 });
                 // Stop checking the state while questions are ready.
                 clearInterval(intervalId);
@@ -76,10 +76,10 @@ define(['jquery', 'core/ajax', 'core/templates'], function($, Ajax, Templates) {
                 } else {
                     var percent = Math.round((showSuccess[0].tries / showSuccess[0].numoftries) * 100);
                 }
-                Templates.render('qbank_genai/info', { tries: showSuccess[0].tries,
+                Templates.render('qbank_questiongen/info', { tries: showSuccess[0].tries,
                                                              numoftries: showSuccess[0].numoftries,
                                                              percent: percent }).then(function(html) {
-                    $("#qbank_genai_info").html(html);
+                    $("#qbank_questiongen_info").html(html);
                 });
             }
         });

@@ -19,7 +19,7 @@ namespace local_aiquestions\privacy;
 /**
  * Privacy API implementation for the AI Text to questions generator plugin.
  *
- * @package     qbank_genai
+ * @package     qbank_questiongen
  * @category    privacy
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later

@@ -17,7 +17,7 @@
 /**
  * Plugin strings are defined here.
  *
- * @package     qbank_genai
+ * @package     qbank_questiongen
  * @category    string
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later

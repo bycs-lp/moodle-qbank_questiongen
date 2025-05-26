@@ -17,7 +17,7 @@
 /**
  * Plugin administration pages are defined here.
  *
- * @package     qbank_genai
+ * @package     qbank_questiongen
  * @category    admin
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -28,9 +28,9 @@ require_once($CFG->dirroot . '/question/editlib.php');
 
 defined('MOODLE_INTERNAL') || die();
 
-core_question\local\bank\helper::require_plugin_enabled('qbank_genai');
+core_question\local\bank\helper::require_plugin_enabled('qbank_questiongen');
 
-list($thispageurl, $contexts, $cmid, $cm, $module, $pagevars) = question_edit_setup('import', '/question/bank/genai/story.php');
+list($thispageurl, $contexts, $cmid, $cm, $module, $pagevars) = question_edit_setup('import', '/question/bank/questiongen/story.php');
 
 list($catid, $catcontext) = explode(',', $pagevars['cat']);
 if (!$qbankcategory = $DB->get_record("question_categories", ['id' => $catid])) {
@@ -60,10 +60,10 @@ require_once("$CFG->libdir/formslib.php");
 require_once(__DIR__ . '/locallib.php');
 
 // $PAGE->set_context(\context_system::instance());
-$PAGE->set_heading(get_string('pluginname', 'qbank_genai'));
-$PAGE->set_title(get_string('pluginname', 'qbank_genai'));
+$PAGE->set_heading(get_string('pluginname', 'qbank_questiongen'));
+$PAGE->set_title(get_string('pluginname', 'qbank_questiongen'));
 $PAGE->set_pagelayout('standard');
-$PAGE->requires->js_call_amd('qbank_genai/state');
+$PAGE->requires->js_call_amd('qbank_questiongen/state');
 
 echo $OUTPUT->header();
 
@@ -73,7 +73,7 @@ $renderer = $PAGE->get_renderer('core_question', 'bank');
 $qbankaction = new \core_question\output\qbank_action_menu($thispageurl);
 echo $renderer->render($qbankaction);
 
-$mform = new \qbank_genai\story_form(null, ['contexts' => $contexts, 'cmid' => $cmid]);
+$mform = new \qbank_questiongen\story_form(null, ['contexts' => $contexts, 'cmid' => $cmid]);
 
 if ($mform->is_cancelled()) {
     redirect($CFG->wwwroot . '/question/edit.php?cmid=' . $cmid);
@@ -87,7 +87,7 @@ if ($mform->is_cancelled()) {
     } else {
         $courseid = required_param('courseid', PARAM_INT);
     }
-    $task = new \qbank_genai\task\questions();
+    $task = new \qbank_questiongen\task\questions();
     if ($task) {
         $task->set_userid($USER->id);
 
@@ -98,7 +98,7 @@ if ($mform->is_cancelled()) {
         // Create the DB entry.
         $dbrecord = new \stdClass();
         // $dbrecord->course = $courseid;
-        $dbrecord->numoftries = get_config('qbank_genai', 'numoftries');
+        $dbrecord->numoftries = get_config('qbank_questiongen', 'numoftries');
         $dbrecord->numofquestions = $data->numofquestions;
         $dbrecord->aiidentifier = !empty($data->addidentifier) ? 1 : 0;
         $dbrecord->category = $qbankcategory->id;
@@ -115,7 +115,7 @@ if ($mform->is_cancelled()) {
         $dbrecord->instructions = $data->{'instructions' . $preset};
         $dbrecord->example = $data->{'example' . $preset};
 
-        $inserted = $DB->insert_record('qbank_genai', $dbrecord);
+        $inserted = $DB->insert_record('qbank_questiongen', $dbrecord);
 
         if ($inserted == 0) {
             throw new \moodle_exception('There was an error when storing the genai processing data to db.');
@@ -128,9 +128,9 @@ if ($mform->is_cancelled()) {
             'uniqid' => $uniqid
         ]);
         \core\task\manager::queue_adhoc_task($task);
-        $success = get_string('tasksuccess', 'qbank_genai');
+        $success = get_string('tasksuccess', 'qbank_questiongen');
     } else {
-        $error = get_string('taskerror', 'qbank_genai');
+        $error = get_string('taskerror', 'qbank_questiongen');
     }
     // Check if the cron is overdue.
     $lastcron = get_config('tool_task', 'lastcronstart');
@@ -145,7 +145,7 @@ if ($mform->is_cancelled()) {
         'cron' => $cronoverdue,
     ];
     // Load the ready template.
-    echo $OUTPUT->render_from_template('qbank_genai/loading', $datafortemplate);
+    echo $OUTPUT->render_from_template('qbank_questiongen/loading', $datafortemplate);
 } else {
     $mform->display();
 }

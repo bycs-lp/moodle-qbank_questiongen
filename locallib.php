@@ -17,7 +17,7 @@
 /**
  * Plugin administration pages are defined here.
  *
- * @package     qbank_genai
+ * @package     qbank_questiongen
  * @category    admin
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -29,13 +29,13 @@
  * @param object $dataobject of the stored processing data from genai db table extended with example data.
  * @return object questions of generated questions
  */
-function qbank_genai_get_questions($dataobject) {
+function qbank_questiongen_get_questions($dataobject) {
     global $USER;
     // Build primer.
     $primer = $dataobject->primer;
     $primer .= "Write $dataobject->numofquestions questions.";
 
-    $key = get_config('qbank_genai', 'key');
+    $key = get_config('qbank_questiongen', 'key');
 
     // Remove new lines and carriage returns.
     $story = str_replace("\n", " ", $dataobject->story);
@@ -63,14 +63,14 @@ function qbank_genai_get_questions($dataobject) {
             [
                     "role" => "user",
                     "content" => 'Now, create ' . $dataobject->numofquestions
-                            . ' questions for me based on this topic: "' . qbank_genai_escape_json($story) . '"',
+                            . ' questions for me based on this topic: "' . qbank_questiongen_escape_json($story) . '"',
             ]
     ];
 
     $generatedquestiontext = '';
 
-    $model = get_config('qbank_genai', 'model');
-    $provider = get_config('qbank_genai', 'provider'); // OpenAI (default) or Azure
+    $model = get_config('qbank_questiongen', 'model');
+    $provider = get_config('qbank_questiongen', 'provider'); // OpenAI (default) or Azure
 
     $headers = [
             'Content-Type' => 'application/json',
@@ -93,13 +93,13 @@ function qbank_genai_get_questions($dataobject) {
                 [
                         'sender' => 'user',
                         'message' => 'Now, create ' . $dataobject->numofquestions
-                                . ' questions for me based on this topic: "' . qbank_genai_escape_json($story) . '"',
+                                . ' questions for me based on this topic: "' . qbank_questiongen_escape_json($story) . '"',
                 ]
         ];
 
         $manager = new \local_ai_manager\manager('questiongeneration');
         $lastmessage = array_pop($messages);
-        $result = $manager->perform_request($lastmessage['message'], 'qbank_genai', SYSCONTEXTID, ['conversationcontext' => $messages]);
+        $result = $manager->perform_request($lastmessage['message'], 'qbank_questiongen', SYSCONTEXTID, ['conversationcontext' => $messages]);
         if ($result->get_code() === 200) {
             $generatedquestiontext = $result->get_content();
         } else {
@@ -110,7 +110,7 @@ function qbank_genai_get_questions($dataobject) {
     } else {
         if ($provider === 'Azure') {
             // If the provider is Azure, use the Azure API endpoint and Azure-specific HTTP header
-            $url = get_config('qbank_genai', 'azure_api_endpoint'); // Use the Azure API endpoint from settings
+            $url = get_config('qbank_questiongen', 'azure_api_endpoint'); // Use the Azure API endpoint from settings
             $headers['api-key'] = $key;
         } else {
             // If the provider is not Azure, use the OpenAI API URL and OpenAI style HTTP header
@@ -149,7 +149,7 @@ function qbank_genai_get_questions($dataobject) {
  * @return array of objects of created questions
  * @deprecated
  */
-function qbank_genai_create_questions($category, $gift, $numofquestions, $userid, $addidentifier) {
+function qbank_questiongen_create_questions($category, $gift, $numofquestions, $userid, $addidentifier) {
     global $CFG, $USER, $DB;
 
     require_once($CFG->libdir . '/questionlib.php');
@@ -165,7 +165,7 @@ function qbank_genai_create_questions($category, $gift, $numofquestions, $userid
         $category = $DB->get_record('question_categories', ['id' => $categoryid, 'contextid' => $categorycontextid]);
     }
 
-    // $classname = "\qbank_genai\local\\" . $page->tool;
+    // $classname = "\qbank_questiongen\local\\" . $page->tool;
     // if (!class_exists($classname)) {
     //     throw new \coding_exception('The  ' . $key . ' is not allowed for the purpose ' .
     //         $this->purpose->get_plugin_name());
@@ -175,7 +175,7 @@ function qbank_genai_create_questions($category, $gift, $numofquestions, $userid
     //     return "Method 'get_answer_column' is missing in tool helper class " . $page->tool;
     // }
 
-    // \qbank_genai\local\gift::parse_questions()
+    // \qbank_questiongen\local\gift::parse_questions()
 
     // Use existing questions category for quiz or create the defaults.
     // if (!$category) {
@@ -201,7 +201,7 @@ function qbank_genai_create_questions($category, $gift, $numofquestions, $userid
  * @param string $value json to escape
  * @return string result escaped json
  */
-function qbank_genai_escape_json($value) {
+function qbank_questiongen_escape_json($value) {
     $escapers = ["\\", "/", "\"", "\n", "\r", "\t", "\x08", "\x0c"];
     $replacements = ["\\\\", "\\/", "\\\"", "\\n", "\\r", "\\t", "\\f", "\\b"];
     $result = str_replace($escapers, $replacements, $value);
@@ -214,7 +214,7 @@ function qbank_genai_escape_json($value) {
  * @param string $gift questions in GIFT format
  * @return bool true if valid, false if not
  */
-function qbank_genai_check_gift($gift) {
+function qbank_questiongen_check_gift($gift) {
     $questions = explode("\n\n", $gift);
 
     foreach ($questions as $question) {

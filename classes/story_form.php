@@ -17,14 +17,14 @@
 /**
  * Story Form Class is defined here.
  *
- * @package     qbank_genai
+ * @package     qbank_questiongen
  * @category    admin
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 
-namespace qbank_genai;
+namespace qbank_questiongen;
 
 defined('MOODLE_INTERNAL') || die();
 require_once($CFG->libdir . '/formslib.php');
@@ -32,7 +32,7 @@ require_once($CFG->libdir . '/formslib.php');
 /**
  * Form to get the story from the user.
  *
- * @package     qbank_genai
+ * @package     qbank_questiongen
  * @category    admin
  */
 class story_form extends \moodleform {
@@ -47,7 +47,7 @@ class story_form extends \moodleform {
 
         // Question category.
         $mform->addElement('questioncategory', 'category', get_string('category', 'question'), ['contexts' => $contexts]);
-        $mform->addHelpButton('category', 'category', 'qbank_genai');
+        $mform->addHelpButton('category', 'category', 'qbank_questiongen');
 
         $modulecontexts = array_filter($contexts, fn($context) => $context->contextlevel === CONTEXT_MODULE);
         if (count($modulecontexts) === 0) {
@@ -61,7 +61,7 @@ class story_form extends \moodleform {
         $select = $mform->addElement(
             'select',
             'numofquestions',
-            get_string('numofquestions', 'qbank_genai'),
+            get_string('numofquestions', 'qbank_questiongen'),
             ['1' => 1, '2' => 2, '3' => 3, '4' => 4, '5' => 5, '6' => 6, '7' => 7, '8' => 8, '9' => 9, '10' => 10]
         );
         $select->setSelected($defaultnumofquestions);
@@ -71,14 +71,14 @@ class story_form extends \moodleform {
         $mform->addElement(
             'textarea',
             'story',
-            get_string('story', 'qbank_genai'),
+            get_string('story', 'qbank_questiongen'),
             'wrap="virtual" rows="10" cols="50"'
         ); // This model's maximum context length is 4097 tokens. We limit the story to 4096 tokens.
         $mform->setType('story', PARAM_RAW);
-        $mform->addHelpButton('story', 'story', 'qbank_genai');
+        $mform->addHelpButton('story', 'story', 'qbank_questiongen');
 
         // Use course contents instead.
-        $mform->addElement('checkbox', 'coursecontents', get_string('use_coursecontents', 'qbank_genai'));
+        $mform->addElement('checkbox', 'coursecontents', get_string('use_coursecontents', 'qbank_questiongen'));
         $mform->setDefault('coursecontents', 0); // Default of "no"
         $mform->setType('coursecontents', PARAM_BOOL);
 
@@ -90,28 +90,28 @@ class story_form extends \moodleform {
             'History of astro physics between 2010 and 2020',
             'History of astro physics after 2020',
         ];
-        $mform->addElement('select', 'courseactivities', get_string('activitylist', 'qbank_genai'), $courseactivities);
+        $mform->addElement('select', 'courseactivities', get_string('activitylist', 'qbank_questiongen'), $courseactivities);
         $mform->hideif('courseactivities', 'coursecontents');
 
 
 
         // Add "GPT-created" to question name.
-        $mform->addElement('checkbox', 'addidentifier', get_string('addidentifier', 'qbank_genai'));
+        $mform->addElement('checkbox', 'addidentifier', get_string('addidentifier', 'qbank_questiongen'));
         $mform->setDefault('addidentifier', 1); // Default of "yes"
         $mform->setType('addidentifier', PARAM_BOOL);
 
         // Preset.
         $presets = [];
         for ($i = 0; $i < 10; $i++) {
-            if ($presetname = get_config('qbank_genai', 'presetname' . $i)) {
+            if ($presetname = get_config('qbank_questiongen', 'presetname' . $i)) {
                 $presets[] = $presetname;
             }
         }
-        $mform->addElement('select', 'preset', get_string('preset', 'qbank_genai'), $presets);
+        $mform->addElement('select', 'preset', get_string('preset', 'qbank_questiongen'), $presets);
 
         // Edit preset.
-        $mform->addElement('checkbox', 'editpreset', get_string('editpreset', 'qbank_genai'));
-        $mform->addElement('html', get_string('shareyourprompts', 'qbank_genai'));
+        $mform->addElement('checkbox', 'editpreset', get_string('editpreset', 'qbank_questiongen'));
+        $mform->addElement('html', get_string('shareyourprompts', 'qbank_questiongen'));
 
 
         // Create elements for all presets.
@@ -121,12 +121,12 @@ class story_form extends \moodleform {
 
             // Format.
             $formatoptions = [
-                    \qbank_genai\task\questions::PARAM_GENAI_GIFT => get_string('gift_format', 'qbank_genai'),
-                    \qbank_genai\task\questions::PARAM_GENAI_XML => get_string('xml_format', 'qbank_genai'),
+                    \qbank_questiongen\task\questions::PARAM_GENAI_GIFT => get_string('gift_format', 'qbank_questiongen'),
+                    \qbank_questiongen\task\questions::PARAM_GENAI_XML => get_string('xml_format', 'qbank_questiongen'),
             ];
-            $mform->addElement('select', 'presetformat' . $i, get_string('presetformat', 'qbank_genai'), $formatoptions);
-            $mform->setDefault('presetformat' . $i, get_config('qbank_genai', 'presetformat' . $primer));
-            $mform->addHelpButton('presetformat' . $i, 'example', 'qbank_genai');
+            $mform->addElement('select', 'presetformat' . $i, get_string('presetformat', 'qbank_questiongen'), $formatoptions);
+            $mform->setDefault('presetformat' . $i, get_config('qbank_questiongen', 'presetformat' . $primer));
+            $mform->addHelpButton('presetformat' . $i, 'example', 'qbank_questiongen');
             $mform->hideif('presetformat' . $i, 'editpreset');
             $mform->hideif('presetformat' . $i, 'preset', 'neq', $i);
 
@@ -134,12 +134,12 @@ class story_form extends \moodleform {
             $mform->addElement(
                 'textarea',
                 'primer' . $i,
-                get_string('primer', 'qbank_genai'),
+                get_string('primer', 'qbank_questiongen'),
                 'wrap="virtual" rows="10" cols="50"'
             );
             $mform->setType('primer' . $i, PARAM_RAW);
-            $mform->setDefault('primer' . $i, get_config('qbank_genai', 'presettprimer' . $primer));
-            $mform->addHelpButton('primer' . $i, 'primer', 'qbank_genai');
+            $mform->setDefault('primer' . $i, get_config('qbank_questiongen', 'presettprimer' . $primer));
+            $mform->addHelpButton('primer' . $i, 'primer', 'qbank_questiongen');
             $mform->hideif('primer' . $i, 'editpreset');
             $mform->hideif('primer' . $i, 'preset', 'neq', $i);
 
@@ -147,12 +147,12 @@ class story_form extends \moodleform {
             $mform->addElement(
                 'textarea',
                 'instructions' . $i,
-                get_string('instructions', 'qbank_genai'),
+                get_string('instructions', 'qbank_questiongen'),
                 'wrap="virtual" rows="10" cols="50"'
             );
             $mform->setType('instructions' . $i, PARAM_RAW);
-            $mform->setDefault('instructions' . $i, get_config('qbank_genai', 'presetinstructions' . $primer));
-            $mform->addHelpButton('instructions' . $i, 'instructions', 'qbank_genai');
+            $mform->setDefault('instructions' . $i, get_config('qbank_questiongen', 'presetinstructions' . $primer));
+            $mform->addHelpButton('instructions' . $i, 'instructions', 'qbank_questiongen');
             $mform->hideif('instructions' . $i, 'editpreset');
             $mform->hideif('instructions' . $i, 'preset', 'neq', $i);
 
@@ -160,12 +160,12 @@ class story_form extends \moodleform {
             $mform->addElement(
                 'textarea',
                 'example' . $i,
-                get_string('example', 'qbank_genai'),
+                get_string('example', 'qbank_questiongen'),
                 'wrap="virtual" rows="10" cols="50"'
             );
             $mform->setType('example' . $i, PARAM_RAW);
-            $mform->setDefault('example' . $i, get_config('qbank_genai', 'presetexample' . $primer));
-            $mform->addHelpButton('example' . $i, 'example', 'qbank_genai');
+            $mform->setDefault('example' . $i, get_config('qbank_questiongen', 'presetexample' . $primer));
+            $mform->addHelpButton('example' . $i, 'example', 'qbank_questiongen');
             $mform->hideif('example' . $i, 'editpreset');
             $mform->hideif('example' . $i, 'preset', 'neq', $i);
         }
@@ -175,8 +175,8 @@ class story_form extends \moodleform {
         $mform->setType('cmid', PARAM_INT);
 
         $buttonarray = [];
-        $buttonarray[] = &$mform->createElement('submit', 'submitbutton', get_string('generate', 'qbank_genai'));
-        $buttonarray[] = &$mform->createElement('cancel', 'cancel', get_string('backtocourse', 'qbank_genai'));
+        $buttonarray[] = &$mform->createElement('submit', 'submitbutton', get_string('generate', 'qbank_questiongen'));
+        $buttonarray[] = &$mform->createElement('cancel', 'cancel', get_string('backtocourse', 'qbank_questiongen'));
         $mform->addGroup($buttonarray, 'buttonar', '', [' '], false);
     }
     /**

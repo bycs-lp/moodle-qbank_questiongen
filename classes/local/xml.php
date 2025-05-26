@@ -17,14 +17,14 @@
 /**
  * Class to handle xml format.
  *
- * @package    qbank_genai
+ * @package    qbank_questiongen
  * @copyright  ISB Bayern, 2024
  * @author     Dr. Peter Mayer
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 
-namespace qbank_genai\local;
+namespace qbank_questiongen\local;
 
 use qbank_managecategories\question_categories;
 use qbank_managecategories\question_category_object_test;
@@ -32,7 +32,7 @@ use qbank_managecategories\question_category_object_test;
 /**
  * Class to handle xml format.
  *
- * @package    qbank_genai
+ * @package    qbank_questiongen
  * @copyright  ISB Bayern, 2024
  * @author     Dr. Peter Mayer
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later

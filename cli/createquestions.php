@@ -17,7 +17,7 @@
 /**
  * CLI utility to test create questions.
  *
- * @package     qbank_genai
+ * @package     qbank_questiongen
  * @category    admin
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -29,7 +29,7 @@ require_once(__DIR__ . '/../locallib.php');
 require_once(__DIR__ . '/../../../engine/bank.php');
 
 global $DB;
-$DB->delete_records('qbank_genai');
+$DB->delete_records('qbank_questiongen');
 
 $qbankobject = new \stdClass();
 $qbankobject->qformat = 'moodlexml';
@@ -100,14 +100,14 @@ $qbankobject->example = '<?xml version="1.0" encoding="UTF-8"?>
     </answer>
   </question>
 </quiz>';
-$recordid = $DB->insert_record('qbank_genai', $qbankobject);
+$recordid = $DB->insert_record('qbank_questiongen', $qbankobject);
 
 
 $user = \core_user::get_user(44);
 \core\session\manager::init_empty_session();
 \core\session\manager::set_user($user);
 
-$task = new \qbank_genai\task\questions();
+$task = new \qbank_questiongen\task\questions();
 $task->set_userid(44);
 $task->set_custom_data(['genaiid' => $recordid]);
 $task->execute();

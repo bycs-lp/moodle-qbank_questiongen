@@ -17,7 +17,7 @@
 /**
  * Plugin services.
  *
- * @package     qbank_genai
+ * @package     qbank_questiongen
  * @category    admin
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -28,8 +28,8 @@ defined('MOODLE_INTERNAL') || die();
 // Define the web service functions of our plugin.
 $functions = [
     // The name of your web service function.
-    'qbank_genai_check_state' => [
-        'classname'   => 'qbank_genai\external\check_state',
+    'qbank_questiongen_check_state' => [
+        'classname'   => 'qbank_questiongen\external\check_state',
         'description' => 'Check state of questions generation',
         'type'        => 'read',
         'ajax'        => true,
@@ -39,7 +39,7 @@ $functions = [
 // Define the services and functions.
 $services = [
     'AI Questions Service' => [
-            'functions' => ['qbank_genai_check_state'],
+            'functions' => ['qbank_questiongen_check_state'],
             'restrictedusers' => 0,
             'enabled' => 1,
     ],

@@ -17,19 +17,19 @@
 /**
  * Plugin entrypoint for navigation.
  *
- * @package    qbank_genai
+ * @package    qbank_questiongen
  * @copyright  ISB Bayern, 2024
  * @author     Dr. Peter Mayer
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 
-namespace qbank_genai;
+namespace qbank_questiongen;
 
 /**
  * Class navigation.
  *
- * @package    qbank_genai
+ * @package    qbank_questiongen
  * @copyright  ISB Bayern, 2024
  * @author     Dr. Peter Mayer
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -37,7 +37,7 @@ namespace qbank_genai;
 class navigation extends \core_question\local\bank\navigation_node_base {
 
     public function get_navigation_title(): string {
-        return get_string('aiquestions', 'qbank_genai');
+        return get_string('aiquestions', 'qbank_questiongen');
     }
 
     public function get_navigation_key(): string {
@@ -45,7 +45,7 @@ class navigation extends \core_question\local\bank\navigation_node_base {
     }
 
     public function get_navigation_url(): \moodle_url {
-        return new \moodle_url('/question/bank/genai/story.php');
+        return new \moodle_url('/question/bank/questiongen/story.php');
     }
 
 }

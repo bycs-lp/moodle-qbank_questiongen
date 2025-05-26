@@ -17,7 +17,7 @@
 /**
  * Plugin administration pages are defined here.
  *
- * @package     qbank_genai
+ * @package     qbank_questiongen
  * @category    admin
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -26,7 +26,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 if ($hassiteconfig) {
-    $settings = new admin_settingpage('qbank_genai_settings', new lang_string('pluginname', 'qbank_genai'));
+    $settings = new admin_settingpage('qbank_questiongen_settings', new lang_string('pluginname', 'qbank_questiongen'));
 
     // Language model provider.
     $provideroptions = [
@@ -35,9 +35,9 @@ if ($hassiteconfig) {
         'local_ai_manager' => 'Plugin "AI Manager"',
     ];
     $settings->add(new admin_setting_configselect(
-        'qbank_genai/provider',
-        get_string('provider', 'qbank_genai'),
-        get_string('providerdesc', 'qbank_genai'),
+        'qbank_questiongen/provider',
+        get_string('provider', 'qbank_questiongen'),
+        get_string('providerdesc', 'qbank_questiongen'),
         'OpenAI',
         $provideroptions,
     ));
@@ -45,9 +45,9 @@ if ($hassiteconfig) {
     // Azure endpoint.
 
     $settings->add(new admin_setting_configtext(
-        'qbank_genai/azure_api_endpoint',
-        get_string('azureapiendpoint', 'qbank_genai'),
-        get_string('azureapiendpointdesc', 'qbank_genai'),
+        'qbank_questiongen/azure_api_endpoint',
+        get_string('azureapiendpoint', 'qbank_questiongen'),
+        get_string('azureapiendpointdesc', 'qbank_questiongen'),
         '',
         PARAM_URL
     ));
@@ -55,9 +55,9 @@ if ($hassiteconfig) {
 
     // OpenAI key.
     $settings->add(new admin_setting_configpasswordunmask(
-        'qbank_genai/key',
-        get_string('openaikey', 'qbank_genai'),
-        get_string('openaikeydesc', 'qbank_genai'),
+        'qbank_questiongen/key',
+        get_string('openaikey', 'qbank_questiongen'),
+        get_string('openaikeydesc', 'qbank_questiongen'),
         '',
         PARAM_TEXT,
         50
@@ -70,18 +70,18 @@ if ($hassiteconfig) {
         'gpt-4o' => 'gpt-4o',
     ];
     $settings->add(new admin_setting_configselect(
-        'qbank_genai/model',
-        get_string('model', 'qbank_genai'),
-        get_string('openaikeydesc', 'qbank_genai'),
+        'qbank_questiongen/model',
+        get_string('model', 'qbank_questiongen'),
+        get_string('openaikeydesc', 'qbank_questiongen'),
         'gpt-3.5-turbo',
         $options,
     ));
 
     // Number of tries.
     $settings->add(new admin_setting_configtext(
-        'qbank_genai/numoftries',
-        get_string('numoftriesset', 'qbank_genai'),
-        get_string('numoftriesdesc', 'qbank_genai'),
+        'qbank_questiongen/numoftries',
+        get_string('numoftriesset', 'qbank_questiongen'),
+        get_string('numoftriesdesc', 'qbank_questiongen'),
         10,
         PARAM_INT,
         10
@@ -89,45 +89,45 @@ if ($hassiteconfig) {
 
     // Presets
     $settings->add(new admin_setting_heading(
-        'qbank_genai/presets',
-        get_string('presets', 'qbank_genai'),
-        get_string('presetsdesc', 'qbank_genai') .
-            get_string('shareyourprompts', 'qbank_genai'),
+        'qbank_questiongen/presets',
+        get_string('presets', 'qbank_questiongen'),
+        get_string('presetsdesc', 'qbank_questiongen') .
+            get_string('shareyourprompts', 'qbank_questiongen'),
     ));
 
     for ($i = 1; $i <= 10; $i++) {
 
         // Preset header.
         $settings->add(new admin_setting_heading(
-            'qbank_genai/preset' . $i,
-            get_string('preset', 'qbank_genai') . " $i",
+            'qbank_questiongen/preset' . $i,
+            get_string('preset', 'qbank_questiongen') . " $i",
             null
         ));
 
         // Preset name.
         $settings->add(new admin_setting_configtext(
-            'qbank_genai/presetname' . $i,
-            get_string('presetname', 'qbank_genai'),
-            get_string('presetnamedesc', 'qbank_genai'),
-            get_string('presetnamedefault' . $i, 'qbank_genai'),
+            'qbank_questiongen/presetname' . $i,
+            get_string('presetname', 'qbank_questiongen'),
+            get_string('presetnamedesc', 'qbank_questiongen'),
+            get_string('presetnamedefault' . $i, 'qbank_questiongen'),
         ));
 
         // Preset primer.
         $settings->add(new admin_setting_configtextarea(
-            'qbank_genai/presettprimer' . $i,
-            get_string('presetprimer', 'qbank_genai'),
-            get_string('primer_help', 'qbank_genai'),
-            get_string('presetprimerdefault' . $i, 'qbank_genai'),
+            'qbank_questiongen/presettprimer' . $i,
+            get_string('presetprimer', 'qbank_questiongen'),
+            get_string('primer_help', 'qbank_questiongen'),
+            get_string('presetprimerdefault' . $i, 'qbank_questiongen'),
             PARAM_RAW,
             4000
         ));
 
         // Preset instructions.
         $settings->add(new admin_setting_configtextarea(
-            'qbank_genai/presetinstructions' . $i,
-            get_string('presetinstructions', 'qbank_genai'),
-            get_string('instructions_help', 'qbank_genai'),
-            get_string('presetinstructionsdefault' . $i, 'qbank_genai'),
+            'qbank_questiongen/presetinstructions' . $i,
+            get_string('presetinstructions', 'qbank_questiongen'),
+            get_string('instructions_help', 'qbank_questiongen'),
+            get_string('presetinstructionsdefault' . $i, 'qbank_questiongen'),
             PARAM_RAW,
             4000
         ));
@@ -138,19 +138,19 @@ if ($hassiteconfig) {
             'moodlexml' => 'Moodle XML format',
         ];
         $settings->add( new admin_setting_configselect(
-            'qbank_genai/presetformat' . $i,
-            get_string('presetformat', 'qbank_genai'),
-            get_string('presetformatdesc', 'qbank_genai'),
+            'qbank_questiongen/presetformat' . $i,
+            get_string('presetformat', 'qbank_questiongen'),
+            get_string('presetformatdesc', 'qbank_questiongen'),
             'gift',
             $formatoptions
         ));
 
         // Preset example.
         $settings->add(new admin_setting_configtextarea(
-            'qbank_genai/presetexample' . $i,
-            get_string('presetexample', 'qbank_genai'),
-            get_string('example_help', 'qbank_genai'),
-            get_string('presetexampledefault' . $i, 'qbank_genai'),
+            'qbank_questiongen/presetexample' . $i,
+            get_string('presetexample', 'qbank_questiongen'),
+            get_string('example_help', 'qbank_questiongen'),
+            get_string('presetexampledefault' . $i, 'qbank_questiongen'),
             PARAM_RAW,
             4000
         ));

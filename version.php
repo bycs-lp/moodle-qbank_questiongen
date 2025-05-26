@@ -17,15 +17,15 @@
 /**
  * Plugin version and other meta-data are defined here.
  *
- * @package     qbank_genai
+ * @package     qbank_questiongen
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'qbank_genai';
+$plugin->component = 'qbank_questiongen';
 $plugin->release = '1.0';
-$plugin->version  = 2024090403;
+$plugin->version  = 2025052600;
 $plugin->requires = 2022041900;
 $plugin->maturity = MATURITY_STABLE;

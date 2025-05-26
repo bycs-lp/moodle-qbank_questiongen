@@ -17,19 +17,19 @@
 /**
  * Class to handle gift format.
  *
- * @package    qbank_genai
+ * @package    qbank_questiongen
  * @copyright  ISB Bayern, 2024
  * @author     Dr. Peter Mayer
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 
-namespace qbank_genai\local;
+namespace qbank_questiongen\local;
 
 /**
  * Class to handle gift format.
  *
- * @package    qbank_genai
+ * @package    qbank_questiongen
  * @copyright  ISB Bayern, 2024
  * @author     Dr. Peter Mayer
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -97,11 +97,11 @@ class gift {
             }
             $created = \question_bank::get_qtype($qtype)->save_question($q, $q);
 
-            $update = $DB->get_record('qbank_genai', ['id' => $genaiid]);
+            $update = $DB->get_record('qbank_questiongen', ['id' => $genaiid]);
             $update->tries = $update->tries + 1;
             $update->success = 1;
             $update->datemodified = time();
-            $DB->update_record('qbank_genai', $update);
+            $DB->update_record('qbank_questiongen', $update);
 
             $createdquestions[] = $created;
         }
