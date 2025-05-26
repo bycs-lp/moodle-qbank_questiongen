@@ -87,7 +87,7 @@ if ($mform->is_cancelled()) {
     } else {
         $courseid = required_param('courseid', PARAM_INT);
     }
-    $task = new \qbank_questiongen\task\questions();
+    $task = new \qbank_questiongen\task\generate_questions();
     if ($task) {
         $task->set_userid($USER->id);
 
@@ -127,7 +127,9 @@ if ($mform->is_cancelled()) {
             'genaiid' => $dbrecord->id,
             'uniqid' => $uniqid
         ]);
-        \core\task\manager::queue_adhoc_task($task);
+        //\core\task\manager::queue_adhoc_task($task);
+        // TODO Reset to executing the task in the background
+        $task->execute();
         $success = get_string('tasksuccess', 'qbank_questiongen');
     } else {
         $error = get_string('taskerror', 'qbank_questiongen');

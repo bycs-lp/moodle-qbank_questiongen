@@ -33,17 +33,17 @@ $DB->delete_records('qbank_questiongen');
 
 $qbankobject = new \stdClass();
 $qbankobject->qformat = 'moodlexml';
-$qbankobject->numofquestions = 2;
-$qbankobject->category = 140;
+$qbankobject->numofquestions = 1;
+$qbankobject->category = 15;
 $qbankobject->story = 'relativity theory';
 $qbankobject->numoftries = 1;
-$qbankobject->userid = 44;
+$qbankobject->userid = 3;
 $qbankobject->llmresponse = '';
 $qbankobject->tries = 0;
 $qbankobject->success = '';
 $qbankobject->uniqid = '446818cd94845c21.21066595';
 $qbankobject->primer = 'You are a helpful teacher\'s assistant that creates multiple choice questions based on the topics given by the user.';
-$qbankobject->instructions = 'Please write a multiple choice question in English language in XML format on a topic I will specify to you separately. Only return the plain XML, do not apply any formatting. Use the example provided for generating the questions in XML format. Inside the <quiz> tags you can specifiy multiple questions wrapped by <question></question>. Replace the string "Question title" in the example by the title of the question, the string "Question text" with the text of the question. Replace the possible answers "Choice 1", "Choice 2", "Choice 3" and "Choice 4" in the example with the options of the generated question. The option that is correct has to have the attribute fraction="100" in the opening "answer" tag, the other wrong options have to have fraction="0".';
+$qbankobject->instructions = 'Please write a multiple choice question in {{currentlang}} language in XML format on a topic I will specify to you separately. Only return the plain XML, do not apply any formatting. Use the example provided for generating the questions in XML format. Inside the <quiz> tags you can specifiy multiple questions wrapped by <question></question>. Replace the string "Question title" in the example by the title of the question, the string "Question text" with the text of the question. Replace the possible answers "Choice 1", "Choice 2", "Choice 3" and "Choice 4" in the example with the options of the generated question. The option that is correct has to have the attribute fraction="100" in the opening "answer" tag, the other wrong options have to have fraction="0".';
 $qbankobject->example = '<?xml version="1.0" encoding="UTF-8"?>
 <quiz>
   <question type="multichoice">
@@ -103,11 +103,11 @@ $qbankobject->example = '<?xml version="1.0" encoding="UTF-8"?>
 $recordid = $DB->insert_record('qbank_questiongen', $qbankobject);
 
 
-$user = \core_user::get_user(44);
+$user = \core_user::get_user(3);
 \core\session\manager::init_empty_session();
 \core\session\manager::set_user($user);
 
-$task = new \qbank_questiongen\task\questions();
-$task->set_userid(44);
+$task = new \qbank_questiongen\task\generate_questions();
+$task->set_userid(3);
 $task->set_custom_data(['genaiid' => $recordid]);
 $task->execute();

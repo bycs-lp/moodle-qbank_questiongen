@@ -121,8 +121,8 @@ class story_form extends \moodleform {
 
             // Format.
             $formatoptions = [
-                    \qbank_questiongen\task\questions::PARAM_GENAI_GIFT => get_string('gift_format', 'qbank_questiongen'),
-                    \qbank_questiongen\task\questions::PARAM_GENAI_XML => get_string('xml_format', 'qbank_questiongen'),
+                    \qbank_questiongen\task\generate_questions::PARAM_GENAI_GIFT => get_string('gift_format', 'qbank_questiongen'),
+                    \qbank_questiongen\task\generate_questions::PARAM_GENAI_XML => get_string('xml_format', 'qbank_questiongen'),
             ];
             $mform->addElement('select', 'presetformat' . $i, get_string('presetformat', 'qbank_questiongen'), $formatoptions);
             $mform->setDefault('presetformat' . $i, get_config('qbank_questiongen', 'presetformat' . $primer));
@@ -187,6 +187,7 @@ class story_form extends \moodleform {
      * @return array
      */
     public function validation($data, $files) {
+        // TODO Make validation fail if story is empty or no course modules have been selected
         return [];
     }
 }

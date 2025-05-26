@@ -25,6 +25,8 @@
 
 namespace qbank_questiongen\task;
 
+use qbank_questiongen\local\question_generator;
+
 defined('MOODLE_INTERNAL') || die();
 
 require_once(__DIR__ . '/../../locallib.php');
@@ -35,7 +37,7 @@ require_once(__DIR__ . '/../../locallib.php');
  * @package     qbank_questiongen
  * @category    admin
  */
-class questions extends \core\task\adhoc_task {
+class generate_questions extends \core\task\adhoc_task {
 
     /** @var string identifier of gift qformat */
     const PARAM_GENAI_GIFT = 'gift';
@@ -84,16 +86,17 @@ class questions extends \core\task\adhoc_task {
             $DB->update_record('qbank_questiongen', $update);
 
             // Get questions from AI API.
-            $questions = \qbank_questiongen_get_questions($dbrecord);
+            $questiongenerator = new question_generator();
+            $question = $questiongenerator->generate_question($dbrecord);
 
-            $update->llmresponse = $questions->text;
+            $update->llmresponse = $question->text;
             $DB->update_record('qbank_questiongen', $update);
 
             switch ($dbrecord->qformat) {
                 case self::PARAM_GENAI_GIFT:
                     $created = \qbank_questiongen\local\gift::parse_questions(
                         $dbrecord->category,
-                        $questions,
+                        $question,
                         $dbrecord->numofquestions,
                         $dbrecord->userid,
                         !empty($dbrecord->aiidentifier),
@@ -104,7 +107,7 @@ class questions extends \core\task\adhoc_task {
                 case self::PARAM_GENAI_XML:
                     $created = \qbank_questiongen\local\xml::parse_questions(
                         $dbrecord->category,
-                        $questions,
+                        $question,
                         $dbrecord->numofquestions,
                         $dbrecord->userid,
                         !empty($dbrecord->aiidentifier),
