@@ -29,8 +29,6 @@ use qbank_questiongen\local\question_generator;
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once(__DIR__ . '/../../locallib.php');
-
 /**
  * The question generator adhoc task.
  *

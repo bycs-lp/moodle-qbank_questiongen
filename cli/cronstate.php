@@ -25,7 +25,6 @@
 
 define('CLI_SCRIPT', true);
 require(__DIR__ . '/../../../config.php');
-require_once(__DIR__ . '/../locallib.php');
 
 // Check if the cron is overdue.
 $lastcron = get_config('tool_task', 'lastcronstart');

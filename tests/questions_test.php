@@ -45,7 +45,6 @@ final class questions_test extends \advanced_testcase {
      * @covers \local_aiquestions_create_questions
      */
     public function test_create_questions(): void {
-        require_once(__DIR__ . '/../locallib.php');
         $this->resetAfterTest(true);
         $gift = "
             ::My interesting questionText
@@ -70,7 +69,6 @@ final class questions_test extends \advanced_testcase {
      * @covers \local_aiquestions_escape_json
      */
     public function test_escape_json(): void {
-        require_once(__DIR__ . '/../locallib.php');
         $myjson = '{"name":"My long
             text with new line"}';
         $escapedjson = \local_aiquestions_escape_json($myjson);
@@ -82,7 +80,6 @@ final class questions_test extends \advanced_testcase {
      * @covers \local_aiquestions_check_gift
      */
     public function test_check_gift(): void {
-        require_once(__DIR__ . '/../locallib.php');
         $gift = "::My interesting questionText
             {
                 = right answer

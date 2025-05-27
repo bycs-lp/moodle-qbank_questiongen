@@ -26,6 +26,8 @@
 
 namespace qbank_questiongen;
 
+use qbank_questiongen\local\question_generator;
+
 defined('MOODLE_INTERNAL') || die();
 require_once($CFG->libdir . '/formslib.php');
 
@@ -49,12 +51,12 @@ class story_form extends \moodleform {
         $mform->addElement('questioncategory', 'category', get_string('category', 'question'), ['contexts' => $contexts]);
         $mform->addHelpButton('category', 'category', 'qbank_questiongen');
 
-        $modulecontexts = array_filter($contexts, fn($context) => $context->contextlevel === CONTEXT_MODULE);
+        /*$modulecontexts = array_filter($contexts, fn($context) => $context->contextlevel === CONTEXT_MODULE);
         if (count($modulecontexts) === 0) {
             $coursecontext = array_values(array_filter($contexts, fn($context) => $context->contextlevel === CONTEXT_COURSE))[0];
             $mform->addElement('hidden', 'courseid', $coursecontext->instanceid);
             $mform->setType('courseid', PARAM_INT);
-        }
+        }*/
 
         // Number of questions.
         $defaultnumofquestions = 4;
@@ -82,18 +84,19 @@ class story_form extends \moodleform {
         $mform->setDefault('coursecontents', 0); // Default of "no"
         $mform->setType('coursecontents', PARAM_BOOL);
 
+        [, $cmrec] = get_module_from_cmid($this->_customdata['cmid']);
 
-        $courseactivities = [
-            'History of astro physics before 1990',
-            'History of astro physics between 1990 and 2000',
-            'History of astro physics between 2000 and 2010',
-            'History of astro physics between 2010 and 2020',
-            'History of astro physics after 2020',
-        ];
-        $mform->addElement('select', 'courseactivities', get_string('activitylist', 'qbank_questiongen'), $courseactivities);
+        $modinfo = get_fast_modinfo($cmrec->course);
+
+        $courseactivities = [];
+        foreach ($modinfo->get_cms() as $cm) {
+            if (in_array($cm->modname, question_generator::get_supported_modtypes())) {
+                $courseactivities[$cm->id] = $cm->name;
+            }
+        }
+
+        $mform->addElement('autocomplete', 'courseactivities', get_string('activitylist', 'qbank_questiongen'), $courseactivities, ['multiple' => true]);
         $mform->hideif('courseactivities', 'coursecontents');
-
-
 
         // Add "GPT-created" to question name.
         $mform->addElement('checkbox', 'addidentifier', get_string('addidentifier', 'qbank_questiongen'));

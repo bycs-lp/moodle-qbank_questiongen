@@ -16,6 +16,7 @@
 
 namespace qbank_questiongen\local;
 
+use cm_info;
 use stdClass;
 
 /**
@@ -101,7 +102,8 @@ class question_generator {
 
             $manager = new \local_ai_manager\manager('questiongeneration');
             $lastmessage = array_pop($messages);
-            $result = $manager->perform_request($lastmessage['message'], 'qbank_questiongen', SYSCONTEXTID, ['conversationcontext' => $messages]);
+            $result = $manager->perform_request($lastmessage['message'], 'qbank_questiongen', SYSCONTEXTID,
+                    ['conversationcontext' => $messages]);
             if ($result->get_code() === 200) {
                 $generatedquestiontext = $result->get_content();
                 mtrace('Question generation successful. The external LLM returned: ');
@@ -153,5 +155,43 @@ class question_generator {
         $replacements = ["\\\\", "\\/", "\\\"", "\\n", "\\r", "\\t", "\\f", "\\b"];
         $result = str_replace($escapers, $replacements, $value);
         return $result;
+    }
+
+    public static function create_story_from_cms(array $courseactivities): string {
+        [, $firstcm] = get_module_from_cmid(reset($courseactivities));
+        $modinfo = get_fast_modinfo($firstcm->course);
+        $story = '';
+        $cms = array_filter($modinfo->get_cms(), fn($cm) => in_array($cm->id, $courseactivities));
+
+        foreach ($cms as $cm) {
+            if (!in_array($cm->id, $courseactivities)) {
+                continue;
+            }
+            if (!in_array($cm->modname, self::get_supported_modtypes())) {
+                debugging('Course module with id ' . $cm->id . ' is currently not supported');
+                continue;
+            }
+            $story .= self::extract_content_from_cm($cm);
+        }
+        return $story;
+    }
+
+    public static function get_supported_modtypes(): array {
+        return ['label', 'page'];
+    }
+
+    public static function extract_content_from_cm(cm_info $cm): string {
+        // TODO Eventually also respect course module descriptions and title?
+        $content = '';
+        $instance = $cm->get_instance_record();
+        switch ($cm->modname) {
+            case 'page':
+                $content = $instance->content;
+                break;
+            case 'label':
+                $content = $instance->intro;
+                break;
+        }
+        return strip_tags($content);
     }
 }

@@ -23,6 +23,8 @@
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use qbank_questiongen\local\question_generator;
+
 require(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/question/editlib.php');
 
@@ -30,7 +32,8 @@ defined('MOODLE_INTERNAL') || die();
 
 core_question\local\bank\helper::require_plugin_enabled('qbank_questiongen');
 
-list($thispageurl, $contexts, $cmid, $cm, $module, $pagevars) = question_edit_setup('import', '/question/bank/questiongen/story.php');
+list($thispageurl, $contexts, $cmid, $cm, $module, $pagevars) =
+        question_edit_setup('import', '/question/bank/questiongen/story.php');
 
 list($catid, $catcontext) = explode(',', $pagevars['cat']);
 if (!$qbankcategory = $DB->get_record("question_categories", ['id' => $catid])) {
@@ -57,7 +60,6 @@ if ($contexts === null) { // Need to get the course from the chosen category.
 $PAGE->set_url($thispageurl);
 
 require_once("$CFG->libdir/formslib.php");
-require_once(__DIR__ . '/locallib.php');
 
 // $PAGE->set_context(\context_system::instance());
 $PAGE->set_heading(get_string('pluginname', 'qbank_questiongen'));
@@ -107,7 +109,8 @@ if ($mform->is_cancelled()) {
         $dbrecord->timecreated = time();
         $dbrecord->timemodified = 0;
         $dbrecord->tries = 0;
-        $dbrecord->story = $data->story;
+        $dbrecord->story =
+                empty($data->coursecontents) ? $data->story : question_generator::create_story_from_cms($data->courseactivities);
         $dbrecord->uniqid = $uniqid;
         $dbrecord->llmresponse = '';
         $dbrecord->success = '';
@@ -122,10 +125,9 @@ if ($mform->is_cancelled()) {
         }
         $dbrecord->id = $inserted;
 
-
         $task->set_custom_data([
-            'genaiid' => $dbrecord->id,
-            'uniqid' => $uniqid
+                'genaiid' => $dbrecord->id,
+                'uniqid' => $uniqid
         ]);
         //\core\task\manager::queue_adhoc_task($task);
         // TODO Reset to executing the task in the background
@@ -140,11 +142,11 @@ if ($mform->is_cancelled()) {
 
     // Prepare the data for the template.
     $datafortemplate = [
-        'wwwroot' => $CFG->wwwroot,
-        'uniqid' => $uniqid,
-        'userid' => $USER->id,
-        'courseid' => $courseid,
-        'cron' => $cronoverdue,
+            'wwwroot' => $CFG->wwwroot,
+            'uniqid' => $uniqid,
+            'userid' => $USER->id,
+            'courseid' => $courseid,
+            'cron' => $cronoverdue,
     ];
     // Load the ready template.
     echo $OUTPUT->render_from_template('qbank_questiongen/loading', $datafortemplate);
