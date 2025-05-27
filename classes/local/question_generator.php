@@ -17,6 +17,9 @@
 namespace qbank_questiongen\local;
 
 use cm_info;
+use assignfeedback_editpdf\pdf;
+use local_ai_manager\ai_manager_utils;
+use local_ai_manager\manager;
 use stdClass;
 
 /**
@@ -28,13 +31,19 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class question_generator {
+    public function __construct(
+        /** @var int The id of the context the question_generator is called from. */
+            private readonly int $contextid
+    ) {
+    }
+
     /**
      * Generate a question by using an external LLM.
      *
      * @param stdClass $dataobject of the stored processing data from questiongen DB table extended with example data.
      * @return stdClass object containing information about the generated question
      */
-    function generate_question($dataobject): stdClass {
+    public function generate_question($dataobject): stdClass {
         global $USER;
         // Build primer.
         $primer = $dataobject->primer;
@@ -102,7 +111,7 @@ class question_generator {
 
             $manager = new \local_ai_manager\manager('questiongeneration');
             $lastmessage = array_pop($messages);
-            $result = $manager->perform_request($lastmessage['message'], 'qbank_questiongen', SYSCONTEXTID,
+            $result = $manager->perform_request($lastmessage['message'], 'qbank_questiongen', $this->contextid,
                     ['conversationcontext' => $messages]);
             if ($result->get_code() === 200) {
                 $generatedquestiontext = $result->get_content();
@@ -157,7 +166,7 @@ class question_generator {
         return $result;
     }
 
-    public static function create_story_from_cms(array $courseactivities): string {
+    public function create_story_from_cms(array $courseactivities): string {
         [, $firstcm] = get_module_from_cmid(reset($courseactivities));
         $modinfo = get_fast_modinfo($firstcm->course);
         $story = '';
@@ -171,16 +180,21 @@ class question_generator {
                 debugging('Course module with id ' . $cm->id . ' is currently not supported');
                 continue;
             }
-            $story .= self::extract_content_from_cm($cm);
+            $story .= $this->extract_content_from_cm($cm);
         }
         return $story;
     }
 
     public static function get_supported_modtypes(): array {
-        return ['label', 'page'];
+        // TODO Implement support for further modtypes.
+        return ['label', 'page', 'resource'];
     }
 
-    public static function extract_content_from_cm(cm_info $cm): string {
+    public static function get_supported_mimetypes(): array {
+        return ['text/plain', 'text/html', 'text/csv', 'application/pdf'];
+    }
+
+    public function extract_content_from_cm(cm_info $cm): string {
         // TODO Eventually also respect course module descriptions and title?
         $content = '';
         $instance = $cm->get_instance_record();
@@ -191,7 +205,74 @@ class question_generator {
             case 'label':
                 $content = $instance->intro;
                 break;
+            case 'resource':
+                $context = \context_module::instance($cm->id);
+                $fs = get_file_storage();
+                $files = $fs->get_area_files($context->id, 'mod_resource', 'content', 0, 'sortorder DESC, id ASC', false);
+                $file = reset($files);
+                if (!empty($file) && in_array($file->get_mimetype(), self::get_supported_mimetypes())) {
+                    if ($file->get_mimetype() === 'application/pdf') {
+                        $this->extract_content_from_pdf($file);
+                    } else {
+                        $content = $file->get_content();
+                    }
+                }
+                break;
         }
         return strip_tags($content);
+    }
+
+    public function extract_content_from_pdf(\stored_file $file): string {
+        $imageprompt =
+                'Return the text that is written on the image. Do not wrap any explanatory text around. Return only the bare content of the image.';
+        $purposeoptions = ai_manager_utils::get_available_purpose_options('itt');
+        if (in_array('application/pdf', $purposeoptions['allowedmimetypes'])) {
+            $requestoptions = [
+                    'image' => 'data:' . $file->get_mimetype() . ';base64,' . base64_encode($file->get_content()),
+            ];
+            $aimanager = new manager('itt');
+            $result = $aimanager->perform_request($imageprompt, 'qbank_questiongen', $this->contextid,
+                    $requestoptions);
+            if ($result->get_code() !== 200) {
+                $errormessage = $result->get_errormessage();
+                if (debugging()) {
+                    $errormessage .= ' Debugging info: ' . $result->get_debuginfo();
+                }
+                throw new \moodle_exception('Could not extract from PDF. Error: ' . $errormessage);
+            }
+            return $result->get_content();
+        }
+
+        // Depending on what models/AI tools are configured, some of them do not support sending PDF files directly. So we have to
+        // convert each PDF page to an image and extract the text from the images one by one.
+        $content = '';
+
+        $tmpdir = \make_request_directory();
+        $tmpfilename = 'qbank_questiongen_tmp_' . uniqid() . '.pdf';
+        file_put_contents($tmpdir . '/' . $tmpfilename, $file->get_content());
+        $pdf = new pdf();
+        $pdf->set_image_folder($tmpdir);
+        $pdf->set_pdf($tmpdir . '/' . $tmpfilename);
+        $images = $pdf->get_images();
+        foreach ($images as $image) {
+            $imagecontent = file_get_contents($tmpdir . '/' . $image);
+            $aimanager = new manager('itt');
+            $requestoptions = [
+                    'image' => 'data:' . mime_content_type($tmpdir . '/' . $image) . ';base64,' .
+                            base64_encode($imagecontent)
+            ];
+            $result = $aimanager->perform_request($imageprompt, 'qbank_questiongen', $this->contextid,
+                    $requestoptions);
+            if ($result->get_code() !== 200) {
+                $errormessage = $result->get_errormessage();
+                if (debugging()) {
+                    $errormessage .= ' Debugging info: ' . $result->get_debuginfo();
+                }
+                throw new \moodle_exception('Could not extract from PDF. Error: ' . $errormessage);
+            }
+            $content .= $result->get_content();
+        }
+
+        return $content;
     }
 }

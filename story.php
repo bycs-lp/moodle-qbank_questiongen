@@ -109,8 +109,13 @@ if ($mform->is_cancelled()) {
         $dbrecord->timecreated = time();
         $dbrecord->timemodified = 0;
         $dbrecord->tries = 0;
-        $dbrecord->story =
-                empty($data->coursecontents) ? $data->story : question_generator::create_story_from_cms($data->courseactivities);
+        if (empty($data->coursecontents)) {
+            $dbrecord = $data->story;
+        } else {
+            $questiongenerator = new question_generator(\context_module::instance($cm->id)->id);
+            $dbrecord->story = $questiongenerator->create_story_from_cms($data->courseactivities);
+        }
+
         $dbrecord->uniqid = $uniqid;
         $dbrecord->llmresponse = '';
         $dbrecord->success = '';
@@ -127,7 +132,8 @@ if ($mform->is_cancelled()) {
 
         $task->set_custom_data([
                 'genaiid' => $dbrecord->id,
-                'uniqid' => $uniqid
+                'uniqid' => $uniqid,
+                'contextid' => \context_module::instance($cm->id)->id,
         ]);
         //\core\task\manager::queue_adhoc_task($task);
         // TODO Reset to executing the task in the background

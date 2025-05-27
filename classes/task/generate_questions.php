@@ -54,9 +54,9 @@ class generate_questions extends \core\task\adhoc_task {
         $numoftries = get_config('qbank_questiongen', 'numoftries');
 
         // Get the data from the task.
-        $data = $this->get_custom_data();
+        $customdata = $this->get_custom_data();
 
-        $genaiid = $data->genaiid;
+        $genaiid = $customdata->genaiid;
         mtrace($genaiid);
         $dbrecord = $DB->get_record('qbank_questiongen', ['id' => $genaiid]);
 
@@ -84,7 +84,7 @@ class generate_questions extends \core\task\adhoc_task {
             $DB->update_record('qbank_questiongen', $update);
 
             // Get questions from AI API.
-            $questiongenerator = new question_generator();
+            $questiongenerator = new question_generator($customdata->contextid);
             $question = $questiongenerator->generate_question($dbrecord);
 
             $update->llmresponse = $question->text;
