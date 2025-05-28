@@ -24,7 +24,7 @@
  */
 
 
-namespace qbank_questiongen;
+namespace qbank_questiongen\form;
 
 use qbank_questiongen\local\question_generator;
 
@@ -42,6 +42,7 @@ class story_form extends \moodleform {
      * Defines forms elements
      */
     public function definition() {
+        global $DB;
 
         $mform = $this->_form;
         $contexts = $this->_customdata['contexts']->having_cap('moodle/question:add');
@@ -75,7 +76,7 @@ class story_form extends \moodleform {
             'story',
             get_string('story', 'qbank_questiongen'),
             'wrap="virtual" rows="10" cols="50"'
-        ); // This model's maximum context length is 4097 tokens. We limit the story to 4096 tokens.
+        );
         $mform->setType('story', PARAM_RAW);
         $mform->addHelpButton('story', 'story', 'qbank_questiongen');
         $mform->hideIf('story', 'coursecontents', 'eq', '1');
@@ -97,7 +98,7 @@ class story_form extends \moodleform {
         }
 
         $mform->addElement('autocomplete', 'courseactivities', get_string('activitylist', 'qbank_questiongen'), $courseactivities, ['multiple' => true]);
-        $mform->hideif('courseactivities', 'coursecontents');
+        $mform->hideIf('courseactivities', 'coursecontents');
 
         $mform->addElement('checkbox', 'sendexistingquestionsascontext', get_string('sendexistingquestionsascontext', 'qbank_questiongen'));
         $mform->setDefault('sendexistingquestionsascontext', 1);
@@ -109,11 +110,10 @@ class story_form extends \moodleform {
         $mform->setType('addidentifier', PARAM_BOOL);
 
         // Preset.
+        $presetrecords = $DB->get_records('qbank_questiongen_presets', null, 'name ASC');
         $presets = [];
-        for ($i = 0; $i < 10; $i++) {
-            if ($presetname = get_config('qbank_questiongen', 'presetname' . $i)) {
-                $presets[] = $presetname;
-            }
+        foreach ($presetrecords as $presetrecord) {
+            $presets[$presetrecord->id] = $presetrecord->name;
         }
         $mform->addElement('select', 'preset', get_string('preset', 'qbank_questiongen'), $presets);
 
@@ -123,62 +123,59 @@ class story_form extends \moodleform {
 
 
         // Create elements for all presets.
-        for ($i = 0; $i < 10; $i++) {
-
-            $primer = $i + 1;
-
+        foreach ($presetrecords as $presetrecord) {
+            $id = $presetrecord->id;
             // Format.
             $formatoptions = [
                     \qbank_questiongen\task\generate_questions::PARAM_GENAI_GIFT => get_string('gift_format', 'qbank_questiongen'),
                     \qbank_questiongen\task\generate_questions::PARAM_GENAI_XML => get_string('xml_format', 'qbank_questiongen'),
             ];
-            $mform->addElement('select', 'presetformat' . $i, get_string('presetformat', 'qbank_questiongen'), $formatoptions);
-            $mform->setDefault('presetformat' . $i, get_config('qbank_questiongen', 'presetformat' . $primer));
-            $mform->addHelpButton('presetformat' . $i, 'example', 'qbank_questiongen');
-            $mform->hideif('presetformat' . $i, 'editpreset');
-            $mform->hideif('presetformat' . $i, 'preset', 'neq', $i);
+            $mform->addElement('select', 'presetformat' . $id, get_string('presetformat', 'qbank_questiongen'), $formatoptions);
+            $mform->setDefault('presetformat' . $id, $presetrecord->format);
+            $mform->addHelpButton('presetformat' . $id, 'example', 'qbank_questiongen');
+            $mform->hideIf('presetformat' . $id, 'editpreset');
+            $mform->hideIf('presetformat' . $id, 'preset', 'neq', "$id");
 
             // Primer.
             $mform->addElement(
                 'textarea',
-                'primer' . $i,
+                'primer' . $id,
                 get_string('primer', 'qbank_questiongen'),
                 'wrap="virtual" rows="10" cols="50"'
             );
-            $mform->setType('primer' . $i, PARAM_RAW);
-            $mform->setDefault('primer' . $i, get_config('qbank_questiongen', 'presettprimer' . $primer));
-            $mform->addHelpButton('primer' . $i, 'primer', 'qbank_questiongen');
-            $mform->hideif('primer' . $i, 'editpreset');
-            $mform->hideif('primer' . $i, 'preset', 'neq', $i);
+            $mform->setType('primer' . $id, PARAM_RAW);
+            $mform->setDefault('primer' . $id, $presetrecord->primer);
+            $mform->addHelpButton('primer' . $id, 'primer', 'qbank_questiongen');
+            $mform->hideIf('primer' . $id, 'editpreset');
+            $mform->hideIf('primer' . $id, 'preset', 'neq', "$id");
 
             // Instructions.
             $mform->addElement(
                 'textarea',
-                'instructions' . $i,
+                'instructions' . $id,
                 get_string('instructions', 'qbank_questiongen'),
                 'wrap="virtual" rows="10" cols="50"'
             );
-            $mform->setType('instructions' . $i, PARAM_RAW);
-            $mform->setDefault('instructions' . $i, get_config('qbank_questiongen', 'presetinstructions' . $primer));
-            $mform->addHelpButton('instructions' . $i, 'instructions', 'qbank_questiongen');
-            $mform->hideif('instructions' . $i, 'editpreset');
-            $mform->hideif('instructions' . $i, 'preset', 'neq', $i);
+            $mform->setType('instructions' . $id, PARAM_RAW);
+            $mform->setDefault('instructions' . $id, $presetrecord->instructions);
+            $mform->addHelpButton('instructions' . $id, 'instructions', 'qbank_questiongen');
+            $mform->hideIf('instructions' . $id, 'editpreset');
+            $mform->hideIf('instructions' . $id, 'preset', 'neq', "$id");
 
             // Example.
             $mform->addElement(
                 'textarea',
-                'example' . $i,
+                'example' . $id,
                 get_string('example', 'qbank_questiongen'),
                 'wrap="virtual" rows="10" cols="50"'
             );
-            $mform->setType('example' . $i, PARAM_RAW);
-            $mform->setDefault('example' . $i, get_config('qbank_questiongen', 'presetexample' . $primer));
-            $mform->addHelpButton('example' . $i, 'example', 'qbank_questiongen');
-            $mform->hideif('example' . $i, 'editpreset');
-            $mform->hideif('example' . $i, 'preset', 'neq', $i);
+            $mform->setType('example' . $id, PARAM_RAW);
+            $mform->setDefault('example' . $id, $presetrecord->example);
+            $mform->addHelpButton('example' . $id, 'example', 'qbank_questiongen');
+            $mform->hideIf('example' . $id, 'editpreset');
+            $mform->hideIf('example' . $id, 'preset', 'neq', "$id");
         }
 
-        // Cmid.
         $mform->addElement('hidden', 'cmid', $this->_customdata['cmid']);
         $mform->setType('cmid', PARAM_INT);
 

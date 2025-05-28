@@ -77,76 +77,68 @@ class generate_questions extends \core\task\adhoc_task {
 
         mtrace("[qbank_questiongen] Creating Questions with AI...\n");
 
-        $questionsgenerated = 0;
-        for ($i = 1; $i <= $dbrecord->numofquestions; $i++) {
-            mtrace("[qbank_questiongen] Creating Question $i...\n");
+        mtrace("[qbank_questiongen] Creating Question...\n");
 
-            $failedattempts = 0;
-            $created = false;
-            $error = ''; // Error message.
-            $update = new \stdClass();
+        $failedattempts = 0;
+        $created = false;
+        $error = ''; // Error message.
+        $update = new \stdClass();
 
-            while (!$created && $failedattempts <= $numoftries) {
+        while (!$created && $failedattempts <= $numoftries) {
 
-                // Get questions from AI API.
-                $questiongenerator = new question_generator($customdata->contextid);
-                $question = $questiongenerator->generate_question($dbrecord, $customdata->sendexistingquestionsascontext);
+            // Get questions from AI API.
+            $questiongenerator = new question_generator($customdata->contextid);
+            $question = $questiongenerator->generate_question($dbrecord, $customdata->sendexistingquestionsascontext);
 
-                $update->id = $genaiid;
-                $update->datemodified = time();
-                $update->llmresponse = $question->text;
-                $DB->update_record('qbank_questiongen', $update);
+            $update->id = $genaiid;
+            $update->datemodified = time();
+            $update->llmresponse = $question->text;
+            $DB->update_record('qbank_questiongen', $update);
 
-                switch ($dbrecord->qformat) {
-                    case self::PARAM_GENAI_GIFT:
-                        $created = \qbank_questiongen\local\gift::parse_question(
-                                $dbrecord->category,
-                                $question,
-                                $dbrecord->numofquestions,
-                                $dbrecord->userid,
-                                !empty($dbrecord->aiidentifier),
-                                $dbrecord->id
-                        );
-                        break;
+            switch ($dbrecord->qformat) {
+                case self::PARAM_GENAI_GIFT:
+                    $created = \qbank_questiongen\local\gift::parse_question(
+                            $dbrecord->category,
+                            $question,
+                            $dbrecord->userid,
+                            !empty($dbrecord->aiidentifier),
+                            $dbrecord->id
+                    );
+                    break;
 
-                    case self::PARAM_GENAI_XML:
-                        $created = \qbank_questiongen\local\xml::parse_questions(
-                                $dbrecord->category,
-                                $question,
-                                $dbrecord->numofquestions,
-                                $dbrecord->userid,
-                                !empty($dbrecord->aiidentifier),
-                                $dbrecord->id
-                        );
-                        break;
-                }
-
-                // If questions were not created.
-                if (!$created) {
-                    // Insert error info to DB.
-                    $update = new \stdClass();
-                    $update->id = $genaiid;
-                    $update->tries = $failedattempts;
-                    $update->timemodified = time();
-                    $DB->update_record('qbank_questiongen', $update);
-                } else {
-                    $questionsgenerated++;
-                }
-
-                // Print error message.
-                // It will be shown on cron/adhoc output (file/whatever).
-                if ($error != '') {
-                    echo '[qbank_questiongen adhoc_task]' . $error;
-                }
-
+                case self::PARAM_GENAI_XML:
+                    $created = \qbank_questiongen\local\xml::parse_questions(
+                            $dbrecord->category,
+                            $question,
+                            $dbrecord->userid,
+                            !empty($dbrecord->aiidentifier),
+                            $dbrecord->id
+                    );
+                    break;
             }
 
-            // Write success state to DB.
-            // TODO Think about removing this column from DB. It does not really tell us much.
-            $update = new \stdClass();
-            $update->id = $genaiid;
-            $update->success = $questionsgenerated === intval($dbrecord->numofquestions) ? 1 : 0;
-            $DB->update_record('qbank_questiongen', $update);
+            // If questions were not created.
+            if (!$created) {
+                // Insert error info to DB.
+                $update = new \stdClass();
+                $update->id = $genaiid;
+                $update->tries = $dbrecord->tries--;
+                $update->timemodified = time();
+                $DB->update_record('qbank_questiongen', $update);
+            }
+
+            // Print error message.
+            // It will be shown on cron/adhoc output (file/whatever).
+            if ($error != '') {
+                echo '[qbank_questiongen adhoc_task]' . $error;
+            }
+
         }
+
+        // Write success state to DB.
+        $update = new \stdClass();
+        $update->id = $genaiid;
+        $update->success = $created ? 1 : 0;
+        $DB->update_record('qbank_questiongen', $update);
     }
 }

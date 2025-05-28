@@ -53,7 +53,6 @@ class xml {
     public static function parse_questions(
         int $categoryid,
         object $llmresponse,
-        int $numofquestions,
         int $userid,
         bool $addidentifier,
         int $genaiid

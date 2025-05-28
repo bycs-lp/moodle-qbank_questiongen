@@ -72,7 +72,7 @@ $renderer = $PAGE->get_renderer('core_question', 'bank');
 $qbankaction = new \core_question\output\qbank_action_menu($thispageurl);
 echo $renderer->render($qbankaction);
 
-$mform = new \qbank_questiongen\story_form(null, ['contexts' => $contexts, 'cmid' => $cmid]);
+$mform = new \qbank_questiongen\form\story_form(null, ['contexts' => $contexts, 'cmid' => $cmid]);
 
 if ($mform->is_cancelled()) {
     redirect($CFG->wwwroot . '/question/edit.php?cmid=' . $cmid);
@@ -86,60 +86,58 @@ if ($mform->is_cancelled()) {
     } else {
         $courseid = required_param('courseid', PARAM_INT);
     }
-    $task = new \qbank_questiongen\task\generate_questions();
-    if ($task) {
-        $task->set_userid($USER->id);
 
-        $uniqid = uniqid($USER->id, true);
 
-        $preset = $data->preset;
+    // ID of the selected preset.
+    $preset = $data->preset;
 
-        // Create the DB entry.
-        $dbrecord = new \stdClass();
-        // $dbrecord->course = $courseid;
-        $dbrecord->numoftries = get_config('qbank_questiongen', 'numoftries');
-        $dbrecord->numofquestions = $data->numofquestions;
-        $dbrecord->aiidentifier = !empty($data->addidentifier) ? 1 : 0;
-        $dbrecord->category = $qbankcategory->id;
-        $dbrecord->userid = $USER->id;
-        $dbrecord->qformat = $data->{'presetformat' . $preset};
-        $dbrecord->timecreated = time();
-        $dbrecord->timemodified = 0;
-        $dbrecord->tries = 0;
-        // If story should be created from course contents we just leave story empty. It will be filled from inside the adhoc
-        // task later on.
-        $dbrecord->story = empty($data->coursecontents) ? $data->story : '';
-        $dbrecord->uniqid = $uniqid;
-        $dbrecord->llmresponse = '';
-        $dbrecord->success = '';
-        $dbrecord->primer = $data->{'primer' . $preset};
-        $dbrecord->instructions = $data->{'instructions' . $preset};
-        $dbrecord->example = $data->{'example' . $preset};
+    // Create the DB entry.
+    $dbrecord = new \stdClass();
+    // $dbrecord->course = $courseid;
+    $dbrecord->numoftries = get_config('qbank_questiongen', 'numoftries');
+    $dbrecord->aiidentifier = !empty($data->addidentifier) ? 1 : 0;
+    $dbrecord->category = $qbankcategory->id;
+    $dbrecord->userid = $USER->id;
+    $dbrecord->qformat = $data->{'presetformat' . $preset};
+    $dbrecord->timecreated = time();
+    $dbrecord->timemodified = 0;
+    $dbrecord->tries = 0;
+    // If story should be created from course contents we just leave story empty. It will be filled from inside the adhoc
+    // task later on.
+    $dbrecord->story = empty($data->coursecontents) ? $data->story : '';
+    $dbrecord->llmresponse = '';
+    $dbrecord->success = '';
+    $dbrecord->primer = $data->{'primer' . $preset};
+    $dbrecord->instructions = $data->{'instructions' . $preset};
+    $dbrecord->example = $data->{'example' . $preset};
 
-        $inserted = $DB->insert_record('qbank_questiongen', $dbrecord);
+    $customdata = [
+            'contextid' => \context_module::instance($cm->id)->id,
+            'sendexistingquestionsascontext' => !empty($data->sendexistingquestionsascontext),
+    ];
 
-        if ($inserted == 0) {
+    $i = 0;
+    $questiongenids = [];
+    while ($i < $data->numofquestions) {
+        $dbrecord->uniqid = uniqid($USER->id, true);
+
+        $insertedid = $DB->insert_record('qbank_questiongen', $dbrecord);
+        if ($insertedid === 0) {
             throw new \moodle_exception('There was an error when storing the genai processing data to db.');
         }
-        $dbrecord->id = $inserted;
-
-        $customdata = [
-                'genaiid' => $dbrecord->id,
-                'uniqid' => $uniqid,
-                'contextid' => \context_module::instance($cm->id)->id,
-                'sendexistingquestionsascontext' => !empty($data->sendexistingquestionsascontext),
-        ];
+        $customdata['genaiid'] = $insertedid;
         if (!empty($data->coursecontents)) {
             $customdata['courseactivities'] = $data->courseactivities;
         }
+        $task = new \qbank_questiongen\task\generate_questions();
+        $task->set_userid($USER->id);
         $task->set_custom_data($customdata);
         //\core\task\manager::queue_adhoc_task($task);
         // TODO Reset to executing the task in the background
         $task->execute();
-        $success = get_string('tasksuccess', 'qbank_questiongen');
-    } else {
-        $error = get_string('taskerror', 'qbank_questiongen');
+        $i++;
     }
+
     // Check if the cron is overdue.
     $lastcron = get_config('tool_task', 'lastcronstart');
     $cronoverdue = ($lastcron < time() - 3600 * 24);
@@ -147,7 +145,6 @@ if ($mform->is_cancelled()) {
     // Prepare the data for the template.
     $datafortemplate = [
             'wwwroot' => $CFG->wwwroot,
-            'uniqid' => $uniqid,
             'userid' => $USER->id,
             'courseid' => $courseid,
             'cmid' => $cmid,

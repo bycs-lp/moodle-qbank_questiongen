@@ -31,7 +31,6 @@ class gift {
      *
      * @param int $categoryid
      * @param object $llmresponse
-     * @param int $numofquestions
      * @param int $userid
      * @param int $genaiid
      * @param bool $addidentifier
@@ -40,7 +39,6 @@ class gift {
     public static function parse_question(
             int $categoryid,
             object $llmresponse,
-            int $numofquestions,
             int $userid,
             bool $addidentifier,
             int $genaiid
