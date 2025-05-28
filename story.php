@@ -15,15 +15,12 @@
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * Plugin administration pages are defined here.
+ * Page to configure and start the generation of questions.
  *
  * @package     qbank_questiongen
- * @category    admin
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-
-use qbank_questiongen\local\question_generator;
 
 require(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/question/editlib.php');
@@ -32,11 +29,11 @@ defined('MOODLE_INTERNAL') || die();
 
 core_question\local\bank\helper::require_plugin_enabled('qbank_questiongen');
 
-list($thispageurl, $contexts, $cmid, $cm, $module, $pagevars) =
+[$thispageurl, $contexts, $cmid, $cm, $module, $pagevars] =
         question_edit_setup('import', '/question/bank/questiongen/story.php');
 
-list($catid, $catcontext) = explode(',', $pagevars['cat']);
-if (!$qbankcategory = $DB->get_record("question_categories", ['id' => $catid])) {
+[$catid, $catcontext] = explode(',', $pagevars['cat']);
+if (!$qbankcategory = $DB->get_record('question_categories', ['id' => $catid])) {
     throw new moodle_exception('nocategory', 'question');
 }
 
@@ -51,7 +48,7 @@ if ($contexts === null) { // Need to get the course from the chosen category.
     if ($thiscontext->contextlevel == CONTEXT_COURSE) {
         require_login($thiscontext->instanceid, false);
     } else if ($thiscontext->contextlevel == CONTEXT_MODULE) {
-        list($module, $cm) = get_module_from_cmid($thiscontext->instanceid);
+        [$module, $cm] = get_module_from_cmid($thiscontext->instanceid);
         require_login($cm->course, false, $cm);
     }
     $contexts->require_one_edit_tab_cap('import');
@@ -109,13 +106,9 @@ if ($mform->is_cancelled()) {
         $dbrecord->timecreated = time();
         $dbrecord->timemodified = 0;
         $dbrecord->tries = 0;
-        if (empty($data->coursecontents)) {
-            $dbrecord = $data->story;
-        } else {
-            $questiongenerator = new question_generator(\context_module::instance($cm->id)->id);
-            $dbrecord->story = $questiongenerator->create_story_from_cms($data->courseactivities);
-        }
-
+        // If story should be created from course contents we just leave story empty. It will be filled from inside the adhoc
+        // task later on.
+        $dbrecord->story = empty($data->coursecontents) ? $data->story : '';
         $dbrecord->uniqid = $uniqid;
         $dbrecord->llmresponse = '';
         $dbrecord->success = '';
@@ -130,11 +123,16 @@ if ($mform->is_cancelled()) {
         }
         $dbrecord->id = $inserted;
 
-        $task->set_custom_data([
+        $customdata = [
                 'genaiid' => $dbrecord->id,
                 'uniqid' => $uniqid,
                 'contextid' => \context_module::instance($cm->id)->id,
-        ]);
+                'sendexistingquestionsascontext' => !empty($data->sendexistingquestionsascontext),
+        ];
+        if (!empty($data->coursecontents)) {
+            $customdata['courseactivities'] = $data->courseactivities;
+        }
+        $task->set_custom_data($customdata);
         //\core\task\manager::queue_adhoc_task($task);
         // TODO Reset to executing the task in the background
         $task->execute();
@@ -152,6 +150,7 @@ if ($mform->is_cancelled()) {
             'uniqid' => $uniqid,
             'userid' => $USER->id,
             'courseid' => $courseid,
+            'cmid' => $cmid,
             'cron' => $cronoverdue,
     ];
     // Load the ready template.

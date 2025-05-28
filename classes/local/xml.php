@@ -48,7 +48,7 @@ class xml {
      * @param int $userid
      * @param int $genaiid
      * @param bool $addidentifier
-     * @return false|object[]
+     * @return return if
      */
     public static function parse_questions(
         int $categoryid,
@@ -57,7 +57,7 @@ class xml {
         int $userid,
         bool $addidentifier,
         int $genaiid
-    ) {
+    ): bool {
 
         global $CFG, $DB;
 
@@ -99,17 +99,17 @@ class xml {
 
         // Do anything before that we need to.
         if (!$qformat->importpreprocess()) {
-            throw new \moodle_exception('cannotimport', '', $thispageurl->out());
+            throw new \moodle_exception('cannotimport', '');
         }
 
         // Process the uploaded file.
         if (!$qformat->importprocess()) {
-            throw new \moodle_exception('cannotimport', '', $thispageurl->out());
+            throw new \moodle_exception('cannotimport', '');
         }
 
         // In case anything needs to be done after.
         if (!$qformat->importpostprocess()) {
-            throw new \moodle_exception('cannotimport', '', $thispageurl->out());
+            throw new \moodle_exception('cannotimport', '');
         }
 
         // Log the import into this category.
@@ -122,5 +122,6 @@ class xml {
 
         $event = \core\event\questions_imported::create($eventparams);
         $event->trigger();
+        return true;
     }
 }

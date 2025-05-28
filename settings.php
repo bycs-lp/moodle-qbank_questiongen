@@ -82,7 +82,7 @@ if ($hassiteconfig) {
         'qbank_questiongen/numoftries',
         get_string('numoftriesset', 'qbank_questiongen'),
         get_string('numoftriesdesc', 'qbank_questiongen'),
-        10,
+        3,
         PARAM_INT,
         10
     ));

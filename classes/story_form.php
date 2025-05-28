@@ -78,6 +78,7 @@ class story_form extends \moodleform {
         ); // This model's maximum context length is 4097 tokens. We limit the story to 4096 tokens.
         $mform->setType('story', PARAM_RAW);
         $mform->addHelpButton('story', 'story', 'qbank_questiongen');
+        $mform->hideIf('story', 'coursecontents', 'eq', '1');
 
         // Use course contents instead.
         $mform->addElement('checkbox', 'coursecontents', get_string('use_coursecontents', 'qbank_questiongen'));
@@ -97,6 +98,10 @@ class story_form extends \moodleform {
 
         $mform->addElement('autocomplete', 'courseactivities', get_string('activitylist', 'qbank_questiongen'), $courseactivities, ['multiple' => true]);
         $mform->hideif('courseactivities', 'coursecontents');
+
+        $mform->addElement('checkbox', 'sendexistingquestionsascontext', get_string('sendexistingquestionsascontext', 'qbank_questiongen'));
+        $mform->setDefault('sendexistingquestionsascontext', 1);
+        $mform->setType('sendexistingquestionsascontext', PARAM_BOOL);
 
         // Add "GPT-created" to question name.
         $mform->addElement('checkbox', 'addidentifier', get_string('addidentifier', 'qbank_questiongen'));

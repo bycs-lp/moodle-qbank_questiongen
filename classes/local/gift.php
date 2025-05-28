@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-
 namespace qbank_questiongen\local;
 
 /**
@@ -38,13 +37,13 @@ class gift {
      * @param bool $addidentifier
      * @return false|object[]
      */
-    public static function parse_questions(
-        int $categoryid,
-        object $llmresponse,
-        int $numofquestions,
-        int $userid,
-        bool $addidentifier,
-        int $genaiid
+    public static function parse_question(
+            int $categoryid,
+            object $llmresponse,
+            int $numofquestions,
+            int $userid,
+            bool $addidentifier,
+            int $genaiid
     ) {
         global $DB, $CFG;
         require_once($CFG->libdir . '/questionlib.php');
@@ -53,50 +52,32 @@ class gift {
 
         $qformat = new \qformat_gift();
 
-        $questions = explode("\n\n", $llmresponse->text);
+        $singlequestion = explode("\n", $llmresponse->text);
 
-        if (count($questions) != $numofquestions) {
+        // Manipulating question text manually for question text field.
+        $questiontext = explode('{', $singlequestion[0]);
+
+        $questiontext = trim(preg_replace('/^.*::/', '', $questiontext[0]));
+
+        $qtype = 'multichoice';
+        $q = $qformat->readquestion($singlequestion);
+
+        // Check if question is valid.
+        if (!$q) {
             return false;
         }
-
-        $createdquestions = []; // Array of objects of created questions.
-        foreach ($questions as $question) {
-
-            $singlequestion = explode("\n", $question);
-
-            // Manipulating question text manually for question text field.
-            $questiontext = explode('{', $singlequestion[0]);
-
-            $questiontext = trim(preg_replace('/^.*::/', '', $questiontext[0]));
-
-            $qtype = 'multichoice';
-            $q = $qformat->readquestion($singlequestion);
-
-            // Check if question is valid.
-            if (!$q) {
-                return false;
-            }
-            $q->category = $categoryid;
-            $q->createdby = $userid;
-            $q->modifiedby = $userid;
-            $q->timecreated = time();
-            $q->timemodified = time();
-            $q->questiontext = ['text' => "<p>" . $questiontext . "</p>"];
-            $q->questiontextformat = 1;
-            if ($addidentifier == 1) {
-                $q->name = "AI-created: " . $q->name; // Adds a "watermark" to the question
-            }
-            $created = \question_bank::get_qtype($qtype)->save_question($q, $q);
-
-            $update = $DB->get_record('qbank_questiongen', ['id' => $genaiid]);
-            $update->tries = $update->tries + 1;
-            $update->success = 1;
-            $update->datemodified = time();
-            $DB->update_record('qbank_questiongen', $update);
-
-            $createdquestions[] = $created;
+        $q->category = $categoryid;
+        $q->createdby = $userid;
+        $q->modifiedby = $userid;
+        $q->timecreated = time();
+        $q->timemodified = time();
+        $q->questiontext = ['text' => "<p>" . $questiontext . "</p>"];
+        $q->questiontextformat = 1;
+        if ($addidentifier == 1) {
+            $q->name = "AI-created: " . $q->name; // Adds a "watermark" to the question
         }
+        $created = \question_bank::get_qtype($qtype)->save_question($q, $q);
 
-        return $createdquestions;
+        return !empty($created);
     }
 }

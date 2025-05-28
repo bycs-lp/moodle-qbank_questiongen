@@ -58,8 +58,8 @@ $string['model'] = 'Model';
 $string['model_desc'] = 'Language model to use. <a href="https://platform.openai.com/docs/models/">More info</a>.';
 $string['numofquestions'] = 'Number of questions to generate';
 $string['numoftries'] = '<b>{$a}</b> tries';
-$string['numoftriesdesc'] = 'Number of tries to send to OpenAI';
-$string['numoftriesset'] = 'Number of Tries';
+$string['numoftriesdesc'] = 'Number of retries that should be performed if generating and import of a question fails';
+$string['numoftriesset'] = 'Number of retries';
 $string['openaikey'] = 'OpenAI or Azure API key';
 $string['openaikeydesc'] = 'You can get an OpenAI API key from <a href="https://platform.openai.com/account/api-keys">https://platform.openai.com/account/api-keys</a><br>
 Select the "+ Create New Secret Key" button and copy the key to this field.<br>
