@@ -86,4 +86,20 @@ if ($hassiteconfig) {
         PARAM_INT,
         10
     ));
+
+    $settings->add(new admin_setting_configtext(
+            'qbank_questiongen/aiidentifier',
+            get_string('aiidentifiersetting', 'qbank_questiongen'),
+            get_string('aiidentifiersettingdesc', 'qbank_questiongen'),
+            'AI generated - ',
+            PARAM_TEXT
+    ));
+
+    $settings->add(new admin_setting_configtext(
+            'qbank_questiongen/aiidentifiertag',
+            get_string('aiidentifiertagsetting', 'qbank_questiongen'),
+            get_string('aiidentifiertagsettingdesc', 'qbank_questiongen'),
+            'aigenerated',
+            PARAM_TEXT
+    ));
 }

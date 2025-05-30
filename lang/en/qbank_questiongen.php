@@ -26,7 +26,11 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['activitylist'] = 'List of activities';
-$string['addidentifier'] = 'Add a "GPT-created: " prefix to the question name';
+$string['addidentifier'] = 'Add a preconfigured prefix ("{$a}") to the question name';
+$string['aiidentifiersetting'] = 'Question name prefix';
+$string['aiidentifiersettingdesc'] = 'Specify the prefix to be added to the question name when importing to the question bank. Leave it empty to disable the adding of a prefix. The prefix will be just put straight in front of the question name. If you want an additional delimiter (dash, colon, spaces etc.) make sure you add it to the prefix.';
+$string['aiidentifiertagsetting'] = 'Question tag';
+$string['aiidentifiertagsettingdesc'] = 'Specify the name of the tag that should be added to the question when importing to the question bank. Leave it empty to disable the adding of a tag.';
 $string['aiquestions'] = 'AI Questions';
 $string['azureapiendpoint'] = 'Azure API Endpoint';
 $string['azureapiendpointdesc'] = 'Enter the Azure API endpoint URL here';

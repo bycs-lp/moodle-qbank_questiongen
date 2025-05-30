@@ -23,11 +23,12 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-
 namespace qbank_questiongen\local;
 
 use qbank_managecategories\question_categories;
 use qbank_managecategories\question_category_object_test;
+use SimpleXMLElement;
+use stdClass;
 
 /**
  * Class to handle xml format.
@@ -43,22 +44,23 @@ class xml {
      * Parse the xml questions.
      *
      * @param int $categoryid
-     * @param object $llmresponse
+     * @param stdClass $llmresponse
      * @param int $numofquestions
-     * @param int $userid
-     * @param int $genaiid
      * @param bool $addidentifier
-     * @return return if
+     * @return return true on success, false otherweise
      */
     public static function parse_questions(
-        int $categoryid,
-        object $llmresponse,
-        int $userid,
-        bool $addidentifier,
-        int $genaiid
+            int $categoryid,
+            stdClass $llmresponse,
+            bool $addidentifier,
     ): bool {
 
         global $CFG, $DB;
+
+        // Eventually add an prefix to the question title. We have to do this in the XML before importing.
+        if (!$addidentifier) {
+            $llmresponse->text = self::add_aiidentifiers($llmresponse->text);
+        }
 
         // Work out if this is an uploaded file.
         // Or one from the filesarea.
@@ -98,23 +100,29 @@ class xml {
 
         // Do anything before that we need to.
         if (!$qformat->importpreprocess()) {
-            throw new \moodle_exception('cannotimport', '');
+            mtrace('Error(s) during importpreprocess: ');
+            mtrace($qformat->importerrors);
+            return false;
         }
 
         // Process the uploaded file.
         if (!$qformat->importprocess()) {
-            throw new \moodle_exception('cannotimport', '');
+            mtrace('Error(s) during importprocess: ');
+            mtrace($qformat->importerrors);
+            return false;
         }
 
         // In case anything needs to be done after.
         if (!$qformat->importpostprocess()) {
-            throw new \moodle_exception('cannotimport', '');
+            mtrace('Error(s) during importpostprocess: ');
+            mtrace($qformat->importerrors);
+            return false;
         }
 
         // Log the import into this category.
         $eventparams = [
-            'contextid' => $qformat->category->contextid,
-            'other' => ['format' => $fileformat, 'categoryid' => $qformat->category->id],
+                'contextid' => $qformat->category->contextid,
+                'other' => ['format' => $fileformat, 'categoryid' => $qformat->category->id],
         ];
 
         // --- End Adaption.
@@ -122,5 +130,27 @@ class xml {
         $event = \core\event\questions_imported::create($eventparams);
         $event->trigger();
         return true;
+    }
+
+    public static function add_aiidentifiers(string $xmlquestionasstring): string {
+        $aiidentifier = get_config('qbank_questiongen', 'aiidentifier');
+        $aiidentifiertag = get_config('qbank_questiongen', 'aiidentifiertag');
+
+        if (empty($aiidentifier) && empty($aiidentifiertag)) {
+            return $xmlquestionasstring;
+        }
+
+        $xmlasobject = new SimpleXMLElement($xmlquestionasstring);
+        if (!empty($aiidentifier)) {
+            $xmlasobject->question->name->text = $aiidentifier . $xmlasobject->question->name->text;
+        }
+        if (!empty($aiidentifiertag)) {
+            if (!isset($xmlasobject->tags)) {
+                $xmlasobject->question->addChild('tags');
+            }
+            $tagelement = $xmlasobject->question->tags->addChild('tag');
+            $tagelement->addChild('text', $aiidentifiertag);
+        }
+        return $xmlasobject->asXML();
     }
 }

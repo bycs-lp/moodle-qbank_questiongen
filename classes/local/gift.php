@@ -71,8 +71,9 @@ class gift {
         $q->timemodified = time();
         $q->questiontext = ['text' => "<p>" . $questiontext . "</p>"];
         $q->questiontextformat = 1;
-        if ($addidentifier == 1) {
-            $q->name = "AI-created: " . $q->name; // Adds a "watermark" to the question
+        $prefix = get_config('qbank_questiongen', 'aiidentifier');
+        if (!empty($addidentifier) && !empty($prefix)) {
+            $q->name = $prefix . $q->name; // Adds a "watermark" to the question
         }
         $created = \question_bank::get_qtype($qtype)->save_question($q, $q);
 

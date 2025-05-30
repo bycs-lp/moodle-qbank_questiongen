@@ -104,12 +104,17 @@ class story_form extends \moodleform {
         $mform->setDefault('sendexistingquestionsascontext', 1);
         $mform->setType('sendexistingquestionsascontext', PARAM_BOOL);
 
-        // Add "GPT-created" to question name.
-        $mform->addElement('checkbox', 'addidentifier', get_string('addidentifier', 'qbank_questiongen'));
-        $mform->setDefault('addidentifier', 1); // Default of "yes"
-        $mform->setType('addidentifier', PARAM_BOOL);
+        $aiidentifier = get_config('qbank_questiongen', 'aiidentifier');
+        if (!empty($aiidentifier)) {
+            // Add a prefix to the question name.
+            $mform->addElement('checkbox', 'addidentifier', get_string('addidentifier', 'qbank_questiongen', $aiidentifier));
+            $mform->setDefault('addidentifier', 1);
+            $mform->setType('addidentifier', PARAM_BOOL);
+        } else {
+            $mform->addElement('hidden', 'addidentifier', 0);
+        }
 
-        // Preset.
+        // Preset selection.
         $presetrecords = $DB->get_records('qbank_questiongen_presets', null, 'name ASC');
         $presets = [];
         foreach ($presetrecords as $presetrecord) {
