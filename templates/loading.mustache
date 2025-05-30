@@ -27,10 +27,8 @@
 
     Example context (json):
     {
-        "wwwroot": "https://moodle.example.com",
-        "courseid": "2",
-        "uniqid" : "1234567890",
-        "userid" : "2",
+        "courseid": 2,
+        "cmid": 124,
         "cron": "0"
     }
 }}
@@ -39,25 +37,19 @@
         {{#str}}cronoverdue, qbank_questiongen{{/str}}
     </div>
 {{/cron}}
-<p class='qbank_questiongen_created' id="qbank_questiongen_success">
-    {{#str}}generating, qbank_questiongen{{/str}}
-    <br>
-    {{#pix}}i/loading, core{{/pix}}
-</p>
-<div id="qbank_questiongen_info">
-    {{>qbank_questiongen/bar}}
+
+<div id="qbank_questiongen_progress">
+    {{{progressbar}}}
 </div>
 
-<div id="qbank_questiongen_userid" style="display:none;">{{userid}}</div>
-
 <p class="d-flex">
-    <a id="localaiquestions_backtocourse" class="btn btn-primary m-1" href='{{wwwroot}}/course/view.php?id={{courseid}}'>
+    <a id="localaiquestions_backtocourse" class="btn btn-primary m-1" href="{{config.wwwroot}}/course/view.php?id={{courseid}}">
         {{#str}}backtocourse, qbank_questiongen{{/str}}
     </a>
-    <a id="qbank_questiongen_gotoquestionbank" class="btn btn-secondary m-1" href='{{wwwroot}}/question/edit.php?cmid={{cmid}}'>
+    <a id="qbank_questiongen_gotoquestionbank" class="btn btn-secondary m-1" href="{{config.wwwroot}}/question/edit.php?cmid={{cmid}}">
         {{#str}}gotoquestionbank, qbank_questiongen{{/str}}
     </a>
-    <a id="qbank_questiongen_generatemore" class="btn btn-secondary m-1" href='{{wwwroot}}/question/bank/questiongen/story.php?cmid={{cmid}}'>
+    <a id="qbank_questiongen_generatemore" class="btn btn-secondary m-1" href="{{config.wwwroot}}/question/bank/questiongen/story.php?cmid={{cmid}}">
         {{#str}}generatemore, qbank_questiongen{{/str}}
     </a>
 </p>

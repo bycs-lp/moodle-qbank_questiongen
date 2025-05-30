@@ -62,7 +62,6 @@ require_once("$CFG->libdir/formslib.php");
 $PAGE->set_heading(get_string('pluginname', 'qbank_questiongen'));
 $PAGE->set_title(get_string('pluginname', 'qbank_questiongen'));
 $PAGE->set_pagelayout('standard');
-$PAGE->requires->js_call_amd('qbank_questiongen/state');
 
 echo $OUTPUT->header();
 
@@ -86,7 +85,6 @@ if ($mform->is_cancelled()) {
     } else {
         $courseid = required_param('courseid', PARAM_INT);
     }
-
 
     // ID of the selected preset.
     $preset = $data->preset;
@@ -125,18 +123,33 @@ if ($mform->is_cancelled()) {
         if ($insertedid === 0) {
             throw new \moodle_exception('There was an error when storing the genai processing data to db.');
         }
-        $customdata['genaiid'] = $insertedid;
+        $questiongenids[] = $insertedid;
         if (!empty($data->coursecontents)) {
             $customdata['courseactivities'] = $data->courseactivities;
         }
-        $task = new \qbank_questiongen\task\generate_questions();
-        $task->set_userid($USER->id);
-        $task->set_custom_data($customdata);
-        //\core\task\manager::queue_adhoc_task($task);
-        // TODO Reset to executing the task in the background
-        $task->execute();
         $i++;
     }
+
+    // We intentionally do not queue one task for each question generation here, because we want the question generations to run
+    // one after each other. That of course takes longer, but allows us to send als the newly created question as context for the
+    // next one so the LLM does not create the same question again. Also it's easier to track the progress of one task in the
+    // frontend instead of multiple ones.
+
+    $task = new \qbank_questiongen\task\generate_questions();
+    $task->set_userid($USER->id);
+    $customdata['questiongenids'] = $questiongenids;
+    $task->set_custom_data($customdata);
+    \core\task\manager::queue_adhoc_task($task);
+    $currentadhoctasks = \core\task\manager::get_adhoc_tasks($task::class);
+    $adhoctask = array_values(array_filter($currentadhoctasks,
+            fn($currentadhoctask) => asort($currentadhoctask->get_custom_data()->questiongenids) === asort($questiongenids)))[0];
+    $adhoctask->initialise_stored_progress();
+    $adhoctask->set_initial_progress();
+
+    $adhoctaskprogressidnumber =
+            \core\output\stored_progress_bar::convert_to_idnumber(\qbank_questiongen\task\generate_questions::class,
+                    $adhoctask->get_id());
+    $adhoctaskprogressbar = \core\output\stored_progress_bar::get_by_idnumber($adhoctaskprogressidnumber);
 
     // Check if the cron is overdue.
     $lastcron = get_config('tool_task', 'lastcronstart');
@@ -149,6 +162,7 @@ if ($mform->is_cancelled()) {
             'courseid' => $courseid,
             'cmid' => $cmid,
             'cron' => $cronoverdue,
+            'progressbar' => $adhoctaskprogressbar->get_content(),
     ];
     // Load the ready template.
     echo $OUTPUT->render_from_template('qbank_questiongen/loading', $datafortemplate);
