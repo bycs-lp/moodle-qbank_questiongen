@@ -23,7 +23,6 @@
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-
 namespace qbank_questiongen\form;
 
 use qbank_questiongen\local\question_generator;
@@ -42,11 +41,12 @@ class story_form extends \moodleform {
      * Defines forms elements
      */
     public function definition() {
-        global $DB;
+        global $DB, $OUTPUT;
 
         $mform = $this->_form;
         $contexts = $this->_customdata['contexts']->having_cap('moodle/question:add');
-        $contexts = array_filter($contexts, fn ($context) => $context->contextlevel !== CONTEXT_SYSTEM && $context->contextlevel !== CONTEXT_COURSECAT);
+        $contexts = array_filter($contexts,
+                fn($context) => $context->contextlevel !== CONTEXT_SYSTEM && $context->contextlevel !== CONTEXT_COURSECAT);
 
         // Question category.
         $mform->addElement('questioncategory', 'category', get_string('category', 'question'), ['contexts' => $contexts]);
@@ -62,20 +62,20 @@ class story_form extends \moodleform {
         // Number of questions.
         $defaultnumofquestions = 4;
         $select = $mform->addElement(
-            'select',
-            'numofquestions',
-            get_string('numofquestions', 'qbank_questiongen'),
-            ['1' => 1, '2' => 2, '3' => 3, '4' => 4, '5' => 5, '6' => 6, '7' => 7, '8' => 8, '9' => 9, '10' => 10]
+                'select',
+                'numofquestions',
+                get_string('numofquestions', 'qbank_questiongen'),
+                ['1' => 1, '2' => 2, '3' => 3, '4' => 4, '5' => 5, '6' => 6, '7' => 7, '8' => 8, '9' => 9, '10' => 10]
         );
         $select->setSelected($defaultnumofquestions);
         $mform->setType('numofquestions', PARAM_INT);
 
         // Story.
         $mform->addElement(
-            'textarea',
-            'story',
-            get_string('story', 'qbank_questiongen'),
-            'wrap="virtual" rows="10" cols="50"'
+                'textarea',
+                'story',
+                get_string('story', 'qbank_questiongen'),
+                'wrap="virtual" rows="10" cols="50"'
         );
         $mform->setType('story', PARAM_RAW);
         $mform->addHelpButton('story', 'story', 'qbank_questiongen');
@@ -97,10 +97,12 @@ class story_form extends \moodleform {
             }
         }
 
-        $mform->addElement('autocomplete', 'courseactivities', get_string('activitylist', 'qbank_questiongen'), $courseactivities, ['multiple' => true]);
+        $mform->addElement('autocomplete', 'courseactivities', get_string('activitylist', 'qbank_questiongen'), $courseactivities,
+                ['multiple' => true]);
         $mform->hideIf('courseactivities', 'coursecontents');
 
-        $mform->addElement('checkbox', 'sendexistingquestionsascontext', get_string('sendexistingquestionsascontext', 'qbank_questiongen'));
+        $mform->addElement('checkbox', 'sendexistingquestionsascontext',
+                get_string('sendexistingquestionsascontext', 'qbank_questiongen'));
         $mform->setDefault('sendexistingquestionsascontext', 1);
         $mform->setType('sendexistingquestionsascontext', PARAM_BOOL);
 
@@ -122,10 +124,13 @@ class story_form extends \moodleform {
         }
         $mform->addElement('select', 'preset', get_string('preset', 'qbank_questiongen'), $presets);
 
+        if (has_capability('qbank/questiongen:manage', \context_system::instance())) {
+            $mform->addElement('static', 'manageglobalpresets', '',
+                    $OUTPUT->render_from_template('qbank_questiongen/managelink', []));
+        }
+
         // Edit preset.
         $mform->addElement('checkbox', 'editpreset', get_string('editpreset', 'qbank_questiongen'));
-        $mform->addElement('html', get_string('shareyourprompts', 'qbank_questiongen'));
-
 
         // Create elements for all presets.
         foreach ($presetrecords as $presetrecord) {
@@ -143,10 +148,10 @@ class story_form extends \moodleform {
 
             // Primer.
             $mform->addElement(
-                'textarea',
-                'primer' . $id,
-                get_string('primer', 'qbank_questiongen'),
-                'wrap="virtual" rows="10" cols="50"'
+                    'textarea',
+                    'primer' . $id,
+                    get_string('primer', 'qbank_questiongen'),
+                    'wrap="virtual" rows="10" cols="50"'
             );
             $mform->setType('primer' . $id, PARAM_RAW);
             $mform->setDefault('primer' . $id, $presetrecord->primer);
@@ -156,10 +161,10 @@ class story_form extends \moodleform {
 
             // Instructions.
             $mform->addElement(
-                'textarea',
-                'instructions' . $id,
-                get_string('instructions', 'qbank_questiongen'),
-                'wrap="virtual" rows="10" cols="50"'
+                    'textarea',
+                    'instructions' . $id,
+                    get_string('instructions', 'qbank_questiongen'),
+                    'wrap="virtual" rows="10" cols="50"'
             );
             $mform->setType('instructions' . $id, PARAM_RAW);
             $mform->setDefault('instructions' . $id, $presetrecord->instructions);
@@ -169,10 +174,10 @@ class story_form extends \moodleform {
 
             // Example.
             $mform->addElement(
-                'textarea',
-                'example' . $id,
-                get_string('example', 'qbank_questiongen'),
-                'wrap="virtual" rows="10" cols="50"'
+                    'textarea',
+                    'example' . $id,
+                    get_string('example', 'qbank_questiongen'),
+                    'wrap="virtual" rows="10" cols="50"'
             );
             $mform->setType('example' . $id, PARAM_RAW);
             $mform->setDefault('example' . $id, $presetrecord->example);
@@ -189,6 +194,7 @@ class story_form extends \moodleform {
         $buttonarray[] = &$mform->createElement('cancel', 'cancel', get_string('backtocourse', 'qbank_questiongen'));
         $mform->addGroup($buttonarray, 'buttonar', '', [' '], false);
     }
+
     /**
      * Form validation
      *

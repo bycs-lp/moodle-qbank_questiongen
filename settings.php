@@ -102,4 +102,11 @@ if ($hassiteconfig) {
             'aigenerated',
             PARAM_TEXT
     ));
+
+    // Add text with link to management as setting.
+    $settings->add(new admin_setting_description(
+            'qbank_questiongen/managepresetspage',
+            get_string('linktomanagepresetspage', 'qbank_questiongen'),
+            html_writer::link(new moodle_url('/question/bank/questiongen/presets.php'), get_string('managepresets', 'qbank_questiongen'), ['class' => 'btn btn-secondary mb-5'])
+    ));
 }

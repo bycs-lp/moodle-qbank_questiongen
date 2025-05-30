@@ -32,7 +32,7 @@ global $DB, $OUTPUT, $PAGE;
 $url = new moodle_url('/qestion/bank/presets.php', []);
 $PAGE->set_url($url);
 $PAGE->set_context(context_system::instance());
-$PAGE->set_heading('MANAGE PRESETS');
+$PAGE->set_heading(get_string('managepresets', 'qbank_questiongen'));
 
 require_capability('qbank/questiongen:manage', context_system::instance());
 
@@ -42,6 +42,7 @@ $presetsrecords = $DB->get_records('qbank_questiongen_presets');
 $presets = [];
 foreach ($presetsrecords as $preset) {
     $presets[] = [
+            'id' => $preset->id,
             'name' => $preset->name,
             'format' => $preset->format,
             'primer' => $preset->primer,

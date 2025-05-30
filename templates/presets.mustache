@@ -27,35 +27,45 @@
 
     Example context (json):
     {
-        "wwwroot": "https://moodle.example.com",
-        "courseid": "2",
-        "uniqid" : "1234567890",
-        "userid" : "2",
-        "cron": "0"
+        "presets": [
+            {
+                "id": 5,
+                "name": "Example preset multiple choice",
+                "primer": "You are a helpful assistant",
+                "instructions": "Create a multiple choice question...",
+                "example": "<?xml version=..."
+            },
+            {
+                "id": 8,
+                "name": "Example preset match",
+                "primer": "You are a helpful assistant",
+                "instructions": "Create a match question...",
+                "example": "<?xml version=..."
+            }
+        ]
     }
 }}
-<div>
+<div class="d-flex flex-column">
+    <div class="mt-5 mb-5">
+        <a href="{{config.wwwroot}}/question/bank/questiongen/edit_preset.php" class="btn btn-primary">{{#str}}addpreset, qbank_questiongen{{/str}}</a>
+    </div>
     <div class="table-responsive">
         <table class="table table-hover table-bordered">
             <thead>
             <tr>
-                <th scope="col">NAME</th>
-                <th scope="col">FORMAT</th>
-                <th scope="col">PRIMER</th>
-                <th scope="col">INSTRUCTIONS</th>
-                <th scope="col">EXAMPLE</th>
-                <th scope="col">ACTIONS</th>
+                <th scope="col">{{#str}}name, qbank_questiongen{{/str}}</th>
+                <th scope="col">{{#str}}primer, qbank_questiongen{{/str}}</th>
+                <th scope="col">{{#str}}instructions, qbank_questiongen{{/str}}</th>
+                <th scope="col">{{#str}}example, qbank_questiongen{{/str}}</th>
             </tr>
             </thead>
             <tbody>
             {{#presets}}
                 <tr>
-                    <td>{{name}}</td>
-                    <td>{{format}}</td>
+                    <td><a href="{{config.wwwroot}}/question/bank/questiongen/edit_preset.php?id={{id}}">{{name}}</a></td>
                     <td>{{primer}}</td>
                     <td>{{instructions}}</td>
-                    <td>{{{example}}}</td>
-                    <td>{{{actions}}}</td>
+                    <td><div style="max-width: 500px; max-height: 200px; overflow: scroll">{{{example}}}</div></td>
                 </tr>
             {{/presets}}
             </tbody>

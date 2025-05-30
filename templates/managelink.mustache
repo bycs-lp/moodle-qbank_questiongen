@@ -1,0 +1,35 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template qbank_questiongen/edit_instance_heading
+
+    Example context (json):
+    {
+        "heading": "Edit the 'Chat' instance",
+        "showdeletebutton": true,
+        "deleteurl": "https://mymoodle.com/editpreset.php?id=5&delete=1"
+    }
+}}
+<div>
+    <div class="alert alert-danger d-flex flex-column" role="alert">
+        {{#str}}managepresetswarning, qbank_questiongen{{/str}}
+        <div class="mt-3 align-self-center">
+            <a href="{{config.wwwroot}}/question/bank/questiongen/presets.php" class="btn btn-danger">{{#str}}managepresets, qbank_questiongen{{/str}}</a>
+        </div>
+    </div>
+
+</div>
