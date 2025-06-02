@@ -44,7 +44,6 @@ foreach ($presetsrecords as $preset) {
     $presets[] = [
             'id' => $preset->id,
             'name' => $preset->name,
-            'format' => $preset->format,
             'primer' => $preset->primer,
             'instructions' => $preset->instructions,
             'example' => '<pre><code>' . s($preset->example) . '</code></pre>',
