@@ -131,9 +131,7 @@ class question_generator {
             $topicinstruction = $sendexistingquestionsascontext ?
                     'Create a question based on the following json encoded content, only use this content for the question: "' .
                     $this->escape_json($story) . '"'
-                    :
-                    'Create a question for the following topic, you may use all information you have about it to generate the question from: ' .
-                    $story;
+                    : $story;
             $messages[] =
                     [
                             'sender' => 'user',

@@ -86,47 +86,15 @@ if ($mform->is_cancelled()) {
         $courseid = required_param('courseid', PARAM_INT);
     }
 
-    // ID of the selected preset.
-    $preset = $data->preset;
-
-    // Create the DB entry.
-    $dbrecord = new \stdClass();
-    // $dbrecord->course = $courseid;
-    $dbrecord->numoftries = get_config('qbank_questiongen', 'numoftries');
-    $dbrecord->aiidentifier = !empty($data->addidentifier) ? 1 : 0;
-    $dbrecord->category = $qbankcategory->id;
-    $dbrecord->userid = $USER->id;
-    $dbrecord->timecreated = time();
-    $dbrecord->timemodified = 0;
-    $dbrecord->tries = 0;
-    // If story should be created from course contents we just leave story empty. It will be filled from inside the adhoc
-    // task later on.
-    $dbrecord->story = empty($data->coursecontents) ? $data->story : '';
-    $dbrecord->llmresponse = '';
-    $dbrecord->success = '';
-    $dbrecord->primer = $data->{'primer' . $preset};
-    $dbrecord->instructions = $data->{'instructions' . $preset};
-    $dbrecord->example = $data->{'example' . $preset};
+    $questiongenids = \qbank_questiongen\local\utils::store_questiongen_data($data);
 
     $customdata = [
             'contextid' => \context_module::instance($cm->id)->id,
             'sendexistingquestionsascontext' => !empty($data->sendexistingquestionsascontext),
     ];
 
-    $i = 0;
-    $questiongenids = [];
-    while ($i < $data->numofquestions) {
-        $dbrecord->uniqid = uniqid($USER->id, true);
-
-        $insertedid = $DB->insert_record('qbank_questiongen', $dbrecord);
-        if ($insertedid === 0) {
-            throw new \moodle_exception('There was an error when storing the genai processing data to db.');
-        }
-        $questiongenids[] = $insertedid;
-        if (!empty($data->coursecontents)) {
-            $customdata['courseactivities'] = $data->courseactivities;
-        }
-        $i++;
+    if (!empty($data->coursecontents)) {
+        $customdata['courseactivities'] = $data->courseactivities;
     }
 
     // We intentionally do not queue one task for each question generation here, because we want the question generations to run

@@ -52,13 +52,6 @@ class story_form extends \moodleform {
         $mform->addElement('questioncategory', 'category', get_string('category', 'question'), ['contexts' => $contexts]);
         $mform->addHelpButton('category', 'category', 'qbank_questiongen');
 
-        /*$modulecontexts = array_filter($contexts, fn($context) => $context->contextlevel === CONTEXT_MODULE);
-        if (count($modulecontexts) === 0) {
-            $coursecontext = array_values(array_filter($contexts, fn($context) => $context->contextlevel === CONTEXT_COURSE))[0];
-            $mform->addElement('hidden', 'courseid', $coursecontext->instanceid);
-            $mform->setType('courseid', PARAM_INT);
-        }*/
-
         // Number of questions.
         $defaultnumofquestions = 4;
         $select = $mform->addElement(
@@ -135,16 +128,6 @@ class story_form extends \moodleform {
         // Create elements for all presets.
         foreach ($presetrecords as $presetrecord) {
             $id = $presetrecord->id;
-            // Format.
-            $formatoptions = [
-                    \qbank_questiongen\task\generate_questions::PARAM_GENAI_GIFT => get_string('gift_format', 'qbank_questiongen'),
-                    \qbank_questiongen\task\generate_questions::PARAM_GENAI_XML => get_string('xml_format', 'qbank_questiongen'),
-            ];
-            $mform->addElement('select', 'presetformat' . $id, get_string('presetformat', 'qbank_questiongen'), $formatoptions);
-            $mform->setDefault('presetformat' . $id, $presetrecord->format);
-            $mform->addHelpButton('presetformat' . $id, 'example', 'qbank_questiongen');
-            $mform->hideIf('presetformat' . $id, 'editpreset');
-            $mform->hideIf('presetformat' . $id, 'preset', 'neq', "$id");
 
             // Primer.
             $mform->addElement(

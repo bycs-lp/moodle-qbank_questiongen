@@ -46,7 +46,7 @@ class xml_importer {
         global $CFG, $DB;
 
         // Eventually add a prefix to the question title. We have to do this in the XML before importing.
-        if (!$addidentifier) {
+        if ($addidentifier) {
             $llmresponse->text = self::add_aiidentifiers($llmresponse->text);
         }
 

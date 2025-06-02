@@ -39,14 +39,10 @@ class generate_questions extends \core\task\adhoc_task {
 
     use \core\task\stored_progress_task_trait;
 
-    /**
-     * Execute the task.
-     *
-     * @return void
-     */
+    #[\Override]
     public function execute() {
         global $DB;
-        // Read numoftries from settings. This setting sets the amount of retries that should be performed if a question generation
+        // Read numoftries from settings. This setting sets the number of retries that should be performed if a question generation
         // fails.
         $numoftries = get_config('qbank_questiongen', 'numoftries');
         $customdata = $this->get_custom_data();
@@ -66,7 +62,8 @@ class generate_questions extends \core\task\adhoc_task {
 
         $questionstocreatecount = count($questiongenrecords);
         $this->start_stored_progress();
-        $this->progress->update(0, $questionstocreatecount, '0 out of ' . $questionstocreatecount . ' QUESTIONS CREATED.');
+        $this->progress->update(0, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',
+                ['current' => 0, 'total' => $questionstocreatecount]));
 
         // Create questions.
         mtrace("[qbank_questiongen] Creating Questions with AI...\n");
@@ -120,14 +117,21 @@ class generate_questions extends \core\task\adhoc_task {
             $update->id = $dbrecord->id;
             $update->success = $created ? 1 : 0;
             $DB->update_record('qbank_questiongen', $update);
-            $this->progress->update($i, $questionstocreatecount,
-                    'QUESTION ' . $i . ' OUT OF ' . $questionstocreatecount . ' CREATED.');
+            $this->progress->update($i, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',
+                    ['current' => $i, 'total' => $questionstocreatecount]));
             $i++;
         }
-        $this->progress->update_full(100, 'ALl ' . $questionstocreatecount . ' QUESTIONS CREATED.');
+        $this->progress->update_full(100, get_string('questiongeneratingfinished', 'qbank_questiongen', $questionstocreatecount));
     }
 
     public function set_initial_progress(): void {
-        $this->progress->update_full(0, 'WAITING FOR BACKGROUND TASK TO START');
+        $this->progress->update_full(0, get_string('waitingforadhoctaskstart', 'qbank_questiongen'));
     }
+
+    #[\Override]
+    public function retry_until_success(): bool {
+        // We don't want to retry this task.
+        return false;
+    }
+
 }
