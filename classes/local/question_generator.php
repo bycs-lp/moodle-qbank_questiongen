@@ -32,10 +32,16 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class question_generator {
+
+    private readonly \core\clock $clock;
+
+    const ITT_MIMETYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+
     public function __construct(
         /** @var int The id of the context the question_generator is called from. */
             private readonly int $contextid
     ) {
+        $this->clock = \core\di::get(\core\clock::class);
     }
 
     /**
@@ -197,6 +203,9 @@ class question_generator {
     }
 
     public function create_story_from_cms(array $courseactivities): string {
+        global $CFG;
+        require_once($CFG->dirroot . '/question/editlib.php');
+
         [, $firstcm] = get_module_from_cmid(reset($courseactivities));
         $modinfo = get_fast_modinfo($firstcm->course);
         $story = '';
@@ -221,7 +230,7 @@ class question_generator {
     }
 
     public static function get_supported_mimetypes(): array {
-        return ['text/plain', 'text/html', 'text/csv', 'application/pdf'];
+        return ['text/plain', 'text/html', 'text/csv', 'application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
     }
 
     public function extract_content_from_cm(cm_info $cm): string {
@@ -241,8 +250,8 @@ class question_generator {
                 $files = $fs->get_area_files($context->id, 'mod_resource', 'content', 0, 'sortorder DESC, id ASC', false);
                 $file = reset($files);
                 if (!empty($file) && in_array($file->get_mimetype(), self::get_supported_mimetypes())) {
-                    if ($file->get_mimetype() === 'application/pdf') {
-                        $this->extract_content_from_pdf($file);
+                    if (in_array($file->get_mimetype(), self::ITT_MIMETYPES)) {
+                        $content = $this->extract_content_from_pdf_or_image($file);
                     } else {
                         $content = $file->get_content();
                     }
@@ -252,11 +261,19 @@ class question_generator {
         return strip_tags($content);
     }
 
-    public function extract_content_from_pdf(\stored_file $file): string {
+    public function extract_content_from_pdf_or_image(\stored_file $file): string {
+        global $DB;
+        if ($record = $DB->get_record('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()])) {
+            $record->timelastaccessed = $this->clock->time();
+            $DB->update_record('qbank_questiongen_resource_cache', $record);
+            return $record->extractedcontent;
+        }
         $imageprompt =
-                'Return the text that is written on the image. Do not wrap any explanatory text around. Return only the bare content of the image.';
+                'Return the text that is written on the image/document. Do not wrap any explanatory text around. '
+                . 'Return only the bare content.';
         $purposeoptions = ai_manager_utils::get_available_purpose_options('itt');
-        if (in_array('application/pdf', $purposeoptions['allowedmimetypes'])) {
+        // For example 'application/pdf' is not supported by some AI systems.
+        if (in_array($file->get_mimetype(), $purposeoptions['allowedmimetypes'])) {
             $requestoptions = [
                     'image' => 'data:' . $file->get_mimetype() . ';base64,' . base64_encode($file->get_content()),
             ];
@@ -270,7 +287,13 @@ class question_generator {
                 }
                 throw new \moodle_exception('Could not extract from PDF. Error: ' . $errormessage);
             }
+            $this->store_to_record_cache($file, $result->get_content());;
             return $result->get_content();
+        }
+
+        if ($file->get_mimetype() !== 'application/pdf') {
+            // Not perfect to throw an exception here. We probably need some image format conversion here.
+            throw new \moodle_exception('Unsupported file type: ' . $file->get_mimetype());
         }
 
         // Depending on what models/AI tools are configured, some of them do not support sending PDF files directly. So we have to
@@ -278,7 +301,8 @@ class question_generator {
         $content = '';
 
         $tmpdir = \make_request_directory();
-        $tmpfilename = 'qbank_questiongen_tmp_' . uniqid() . '.pdf';
+        $fileextension = explode('/', $file->get_mimetype())[1];
+        $tmpfilename = 'qbank_questiongen_tmp_' . uniqid() . '.' . $fileextension;
         file_put_contents($tmpdir . '/' . $tmpfilename, $file->get_content());
         $pdf = new pdf();
         $pdf->set_image_folder($tmpdir);
@@ -302,7 +326,29 @@ class question_generator {
             }
             $content .= $result->get_content();
         }
-
+        $this->store_to_record_cache($file, $content);
         return $content;
+    }
+
+    public function store_to_record_cache(\stored_file $file, string $extractedcontent): void {
+        global $DB;
+        $time = $this->clock->time();
+        if ($currentrecord = $DB->get_record('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()])) {
+            if ($currentrecord->extractedcontent !== $extractedcontent) {
+                $currentrecord->extractedcontent = $extractedcontent;
+            }
+            $currentrecord->timemodified = $time;
+            $currentrecord->timelastaccessed = $time;
+            $DB->update_record('qbank_questiongen_resource_cache', $currentrecord);
+            return;
+        }
+
+        $record = new stdClass();
+        $record->contenthash = $file->get_contenthash();
+        $record->extractedcontent = $extractedcontent;
+        $record->timemodified = $time;
+        $record->timecreated = $time;
+        $record->timelastaccessed = $time;
+        $DB->insert_record('qbank_questiongen_resource_cache', $record);
     }
 }

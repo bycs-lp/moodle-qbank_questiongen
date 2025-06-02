@@ -115,6 +115,11 @@ class xml_importer {
 
         $xmlasobject = new SimpleXMLElement($xmlquestionasstring);
         if (!empty($aiidentifier)) {
+            if (!isset($xmlasobject->question) || !isset($xmlasobject->question->name) || !isset($xmlasobject->question->name->text)) {
+                // The XML could be broken, so we just output some debugging and return.
+                debugging('Could not add an AI identifier because the XML is broken. Parsed XML:');
+                debugging($xmlasobject->asXML());
+            }
             $xmlasobject->question->name->text = $aiidentifier . $xmlasobject->question->name->text;
         }
         if (!empty($aiidentifiertag)) {

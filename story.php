@@ -105,11 +105,16 @@ if ($mform->is_cancelled()) {
     $task = new \qbank_questiongen\task\generate_questions();
     $task->set_userid($USER->id);
     $customdata['questiongenids'] = $questiongenids;
+    // We need to re-query the adhoc task once queued to get the correct id for showing the progress bar.
+    // Therefore, we need something to identify the adhoc tasks.
+    $uniqadhoctaskid = uniqid();
+    $customdata['uniqadhoctaskid'] = $uniqadhoctaskid;
     $task->set_custom_data($customdata);
     \core\task\manager::queue_adhoc_task($task);
     $currentadhoctasks = \core\task\manager::get_adhoc_tasks($task::class);
     $adhoctask = array_values(array_filter($currentadhoctasks,
-            fn($currentadhoctask) => asort($currentadhoctask->get_custom_data()->questiongenids) === asort($questiongenids)))[0];
+            fn($currentadhoctask) => isset($currentadhoctask->get_custom_data()->uniqadhoctaskid) &&
+                    $currentadhoctask->get_custom_data()->uniqadhoctaskid === $uniqadhoctaskid))[0];
     $adhoctask->initialise_stored_progress();
     $adhoctask->set_initial_progress();
 

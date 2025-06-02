@@ -64,3 +64,19 @@ function qbank_questiongen_extend_settings_navigation($settingsnav, $context) {
         }
     }
 }
+
+/**
+ * Delete file content from the qbank_questiongen_resource_cache table if the corresponding file has been deleted.
+ *
+ * Will only be deleted if no other file with this content hash exists.
+ *
+ * @param stdClass $file the file record from the "files" table
+ */
+function qbank_questiongen_after_file_deleted(stdClass $file): void {
+    global $DB;
+    // If there is still another file that has the identical contenthash we keep our cached contents.
+    if ($DB->record_exists('qbank_questiongen_resource_cache', ['contenthash' => $file->contenthash])) {
+        return;
+    }
+    $DB->delete_records('qbank_questiongen_resource_cache', ['contenthash' => $file->contenthash]);
+}

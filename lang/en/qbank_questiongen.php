@@ -49,6 +49,7 @@ https://docs.moodle.org/en/Cron#Setting_up_cron_on_your_system
 </a> for more information.';
 $string['editpreset'] = 'Edit the preset before sending it to the AI';
 $string['errornotcreated'] = 'Error: questions were not created';
+$string['errorcreatingquestions'] = 'An error occurred while creating the questions: {$a->failed} out of {$a->total} failed.';
 $string['example'] = 'Example';
 $string['example_help'] = 'The example shows the AI an example output, to clarify the formatting.';
 $string['exception_presetidmissing'] = 'Preset ID missing';
@@ -98,8 +99,8 @@ $string['primer_help'] = 'The primer is the first information to be sent to the 
 $string['privacy:metadata'] = 'AI text to questions generator does not store any personal data.';
 $string['provider'] = 'GPT provider';
 $string['providerdesc'] = 'Select if you are using Azure of OpenAI';
-$string['questiongeneratingstatus'] = 'Question {$a->current} out of {$a->total} generated.';
-$string['questiongeneratingfinished'] = 'All {$a} questions have been generated.';
+$string['questiongeneratingstatus'] = 'Question {$a->current} out of {$a->total} processed.';
+$string['questiongeneratingfinished'] = 'All {$a} question generations have been processed.';
 $string['sendexistingquestionsascontext'] = 'Send existing questions as context';
 $string['sendexistingquestionsascontext_help'] = 'Enable to make the tool send all question titles and question texts from all the questions in the current category to the external AI system to enable the AI system to generate questions that are different from the already existing ones.';
 $string['story'] = 'Topic';

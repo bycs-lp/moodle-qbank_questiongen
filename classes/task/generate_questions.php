@@ -44,84 +44,98 @@ class generate_questions extends \core\task\adhoc_task {
         global $DB;
         // Read numoftries from settings. This setting sets the number of retries that should be performed if a question generation
         // fails.
-        $numoftries = get_config('qbank_questiongen', 'numoftries');
-        $customdata = $this->get_custom_data();
-        $questiongenids = $customdata->questiongenids;
-        [$insql, $inparams] = $DB->get_in_or_equal($questiongenids);
-        $questiongenrecords = $DB->get_records_select('qbank_questiongen', "id $insql", $inparams);
+        try {
+            $customdata = $this->get_custom_data();
+            $questiongenids = $customdata->questiongenids;
+            [$insql, $inparams] = $DB->get_in_or_equal($questiongenids);
+            $questiongenrecords = $DB->get_records_select('qbank_questiongen', "id $insql", $inparams);
 
-        // Before creating questions we need to check, if we need to generate the story from the course content first.
-        if (property_exists($customdata, 'courseactivities') && !empty($customdata->courseactivities)) {
-            $questiongenerator = new question_generator($customdata->contextid);
-            foreach ($questiongenrecords as $dbrecord) {
-                $story = $questiongenerator->create_story_from_cms($customdata->courseactivities);
-                $dbrecord->story = $story;
-                $DB->update_record('qbank_questiongen', $dbrecord);
-            }
-        }
-
-        $questionstocreatecount = count($questiongenrecords);
-        $this->start_stored_progress();
-        $this->progress->update(0, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',
-                ['current' => 0, 'total' => $questionstocreatecount]));
-
-        // Create questions.
-        mtrace("[qbank_questiongen] Creating Questions with AI...\n");
-
-        $i = 1;
-        foreach ($questiongenids as $questiongenid) {
-            $failedattempts = 0;
-            $created = false;
-            $error = ''; // Error message.
-            $update = new \stdClass();
-
-            $dbrecord = $DB->get_record('qbank_questiongen', ['id' => $questiongenid]);
-            mtrace("[qbank_questiongen] Creating Question $i ...\n");
-
-            while (!$created && $failedattempts <= $numoftries) {
-                // Get questions from AI API.
+            // Before creating questions we need to check, if we need to generate the story from the course content first.
+            if (property_exists($customdata, 'courseactivities') && !empty($customdata->courseactivities)) {
                 $questiongenerator = new question_generator($customdata->contextid);
-                $question = $questiongenerator->generate_question($dbrecord, $customdata->sendexistingquestionsascontext);
-
-                $update->id = $dbrecord->id;
-                $update->datemodified = time();
-                $update->llmresponse = $question->text;
-                $DB->update_record('qbank_questiongen', $update);
-
-                $created = \qbank_questiongen\local\xml_importer::parse_questions(
-                        $dbrecord->category,
-                        $question,
-                        $dbrecord->aiidentifier,
-                );
-
-                // If questions were not created.
-                if (!$created) {
-                    // Insert error info to DB.
-                    $update = new \stdClass();
-                    $update->id = $dbrecord->id;
-                    $update->tries = $dbrecord->tries--;
-                    $update->timemodified = time();
-                    $DB->update_record('qbank_questiongen', $update);
+                $story = $questiongenerator->create_story_from_cms($customdata->courseactivities);
+                foreach ($questiongenrecords as $dbrecord) {
+                    $dbrecord->story = $story;
+                    $DB->update_record('qbank_questiongen', $dbrecord);
                 }
-
-                // Print error message.
-                // It will be shown on cron/adhoc output (file/whatever).
-                if ($error != '') {
-                    mtrace('[qbank_questiongen adhoc_task]' . $error);
-                }
-
             }
 
-            // Write success state to DB.
-            $update = new \stdClass();
-            $update->id = $dbrecord->id;
-            $update->success = $created ? 1 : 0;
-            $DB->update_record('qbank_questiongen', $update);
-            $this->progress->update($i, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',
-                    ['current' => $i, 'total' => $questionstocreatecount]));
-            $i++;
+            $questionstocreatecount = count($questiongenrecords);
+            $this->start_stored_progress();
+            $this->progress->update(0, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',
+                    ['current' => 0, 'total' => $questionstocreatecount]));
+
+            // Create questions.
+            mtrace("[qbank_questiongen] Creating Questions with AI...\n");
+
+            $i = 1;
+            $maxtries = get_config('qbank_questiongen', 'numoftries');
+            foreach ($questiongenids as $questiongenid) {
+                $created = false;
+                $error = ''; // Error message.
+                $update = new \stdClass();
+
+                $dbrecord = $DB->get_record('qbank_questiongen', ['id' => $questiongenid]);
+                mtrace("[qbank_questiongen] Creating Question $i ...\n");
+
+                while (!$created && $dbrecord->tries <= $maxtries) {
+                    // Get questions from AI API.
+                    $questiongenerator = new question_generator($customdata->contextid);
+                    $question = $questiongenerator->generate_question($dbrecord, $customdata->sendexistingquestionsascontext);
+
+                    $update->id = $dbrecord->id;
+                    $update->datemodified = time();
+                    $update->llmresponse = $question->text;
+                    $DB->update_record('qbank_questiongen', $update);
+
+                    $created = \qbank_questiongen\local\xml_importer::parse_questions(
+                            $dbrecord->category,
+                            $question,
+                            $dbrecord->aiidentifier,
+                    );
+
+                    // If questions were not created.
+                    if (!$created) {
+                        // Insert error info to DB.
+                        $update = new \stdClass();
+                        $update->id = $dbrecord->id;
+                        $update->tries = $dbrecord->tries++;
+                        $update->timemodified = time();
+                        $DB->update_record('qbank_questiongen', $update);
+                    }
+
+                    // Print error message.
+                    // It will be shown on cron/adhoc output (file/whatever).
+                    if ($error != '') {
+                        mtrace('[qbank_questiongen adhoc_task]' . $error);
+                    }
+
+                }
+
+                // Write success state to DB.
+                $update = new \stdClass();
+                $update->id = $dbrecord->id;
+                $update->success = $created ? 1 : 0;
+                $DB->update_record('qbank_questiongen', $update);
+                $this->progress->update($i, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',
+                        ['current' => $i, 'total' => $questionstocreatecount]));
+                $i++;
+            }
+            $this->progress->update_full(100,
+                    get_string('questiongeneratingfinished', 'qbank_questiongen', $questionstocreatecount));
+            $successstates = $DB->get_fieldset_select('qbank_questiongen', 'success', "id $insql", $inparams);
+            $failedquestionscount = count(array_filter($successstates, fn($state) => intval($state) === 0));
+            if ($failedquestionscount > 0) {
+                $this->progress->error(get_string('errorcreatingquestions', 'qbank_questiongen',
+                        ['failed' => $failedquestionscount, 'total' => $questionstocreatecount]));
+            }
+
+        } catch (\Exception $exception) {
+            mtrace('Exception thrown during task. Task will not be requeued. This is just for debugging purposes.');
+            mtrace('Exception message: ' . $exception->getMessage());
+            mtrace('Exception stack trace:');
+            mtrace($exception->getTraceAsString());
         }
-        $this->progress->update_full(100, get_string('questiongeneratingfinished', 'qbank_questiongen', $questionstocreatecount));
     }
 
     public function set_initial_progress(): void {

@@ -48,7 +48,7 @@ class utils {
         $dbrecord->userid = $USER->id;
         $dbrecord->timecreated = time();
         $dbrecord->timemodified = 0;
-        $dbrecord->tries = 0;
+        $dbrecord->tries = 1;
         if (empty($data->coursecontents)) {
             $dbrecord->story = self::filter_prompts($data->story);
         } else {
