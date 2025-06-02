@@ -14,21 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Plugin entrypoint for qbank.
- *
- * @package    qbank_questiongen
- * @copyright  ISB Bayern, 2024
- * @author     Dr. Peter Mayer
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace qbank_questiongen;
 
 use core_question\local\bank\navigation_node_base;
 
 /**
- * Class plugin_feature.
+ * Plugin entrypoint for qbank.
  *
  * @package    qbank_questiongen
  * @copyright  ISB Bayern, 2024

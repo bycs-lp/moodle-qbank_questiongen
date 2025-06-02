@@ -30,7 +30,7 @@ defined('MOODLE_INTERNAL') || die();
  * @param context $context
  */
 function qbank_questiongen_extend_settings_navigation($settingsnav, $context) {
-    global $CFG, $PAGE, $USER;
+    global $PAGE;
 
     // Add the AI Questions menu to the course administration menu only if the user has the permission to add questions.
     if (has_capability('moodle/question:add', $context)) {

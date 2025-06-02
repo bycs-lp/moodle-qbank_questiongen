@@ -96,7 +96,6 @@ if ($mform->is_cancelled()) {
     $dbrecord->aiidentifier = !empty($data->addidentifier) ? 1 : 0;
     $dbrecord->category = $qbankcategory->id;
     $dbrecord->userid = $USER->id;
-    $dbrecord->qformat = $data->{'presetformat' . $preset};
     $dbrecord->timecreated = time();
     $dbrecord->timemodified = 0;
     $dbrecord->tries = 0;

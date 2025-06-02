@@ -39,13 +39,6 @@ class generate_questions extends \core\task\adhoc_task {
 
     use \core\task\stored_progress_task_trait;
 
-    /** @var string identifier of gift qformat */
-    const PARAM_GENAI_GIFT = 'gift';
-
-    /** @var string identifier of xml qformat */
-    const PARAM_GENAI_XML = 'moodlexml';
-
-
     /**
      * Execute the task.
      *
@@ -98,27 +91,11 @@ class generate_questions extends \core\task\adhoc_task {
                 $update->llmresponse = $question->text;
                 $DB->update_record('qbank_questiongen', $update);
 
-                switch ($dbrecord->qformat) {
-                    case self::PARAM_GENAI_GIFT:
-                        $created = \qbank_questiongen\local\gift::parse_question(
-                                $dbrecord->category,
-                                $question,
-                                $dbrecord->userid,
-                                !empty($dbrecord->aiidentifier),
-                                $dbrecord->id
-                        );
-                        break;
-
-                    case self::PARAM_GENAI_XML:
-                        $created = \qbank_questiongen\local\xml::parse_questions(
-                                $dbrecord->category,
-                                $question,
-                                $dbrecord->userid,
-                                !empty($dbrecord->aiidentifier),
-                                $dbrecord->id
-                        );
-                        break;
-                }
+                $created = \qbank_questiongen\local\xml_importer::parse_questions(
+                        $dbrecord->category,
+                        $question,
+                        $dbrecord->aiidentifier,
+                );
 
                 // If questions were not created.
                 if (!$created) {
@@ -143,13 +120,14 @@ class generate_questions extends \core\task\adhoc_task {
             $update->id = $dbrecord->id;
             $update->success = $created ? 1 : 0;
             $DB->update_record('qbank_questiongen', $update);
-            $this->progress->update($i, $questionstocreatecount, 'QUESTION ' . $i . ' OUT OF ' . $questionstocreatecount . ' CREATED.');
+            $this->progress->update($i, $questionstocreatecount,
+                    'QUESTION ' . $i . ' OUT OF ' . $questionstocreatecount . ' CREATED.');
             $i++;
         }
         $this->progress->update_full(100, 'ALl ' . $questionstocreatecount . ' QUESTIONS CREATED.');
     }
 
     public function set_initial_progress(): void {
-        $this->progress->update_full(0,  'WAITING FOR BACKGROUND TASK TO START');
+        $this->progress->update_full(0, 'WAITING FOR BACKGROUND TASK TO START');
     }
 }

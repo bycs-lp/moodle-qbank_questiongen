@@ -14,40 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * Class to handle xml format.
- *
- * @package    qbank_questiongen
- * @copyright  ISB Bayern, 2024
- * @author     Dr. Peter Mayer
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace qbank_questiongen\local;
 
-use qbank_managecategories\question_categories;
-use qbank_managecategories\question_category_object_test;
 use SimpleXMLElement;
 use stdClass;
 
 /**
- * Class to handle xml format.
+ * Class to handle the import of generated questions in XML format.
  *
  * @package    qbank_questiongen
  * @copyright  ISB Bayern, 2024
  * @author     Dr. Peter Mayer
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class xml {
+class xml_importer {
 
     /**
-     * Parse the xml questions.
+     * Parse the XML questions.
      *
-     * @param int $categoryid
-     * @param stdClass $llmresponse
-     * @param int $numofquestions
-     * @param bool $addidentifier
-     * @return return true on success, false otherweise
+     * @param int $categoryid the question category to import the question to
+     * @param stdClass $llmresponse the $llmresponse object that contains the question XML
+     * @param bool $addidentifier if the question should be prefixed
+     * @return true on success, false otherweise
      */
     public static function parse_questions(
             int $categoryid,
@@ -57,25 +45,16 @@ class xml {
 
         global $CFG, $DB;
 
-        // Eventually add an prefix to the question title. We have to do this in the XML before importing.
+        // Eventually add a prefix to the question title. We have to do this in the XML before importing.
         if (!$addidentifier) {
             $llmresponse->text = self::add_aiidentifiers($llmresponse->text);
         }
-
-        // Work out if this is an uploaded file.
-        // Or one from the filesarea.
 
         $fileformat = 'xml';
         $filedir = make_request_directory();
         $realfilename = uniqid() . "." . $fileformat;
         $importfile = $filedir . '/' . $realfilename;
         $filecreated = file_put_contents($importfile, $llmresponse->text);
-
-        // $realfilename = $importform->get_new_filename('newfile');
-        // $importfile = make_request_directory() . "/{$realfilename}";
-        // if (!$result = $importform->save_file('newfile', $importfile, true)) {
-        //     throw new moodle_exception('uploadproblem');
-        // }
 
         $formatfile = $CFG->dirroot . '/question/format/xml/format.php';
         if (!is_readable($formatfile)) {
@@ -93,9 +72,6 @@ class xml {
         $qformat->setContexts([\context_helper::instance_by_id($category->contextid)]);
         $qformat->setFilename($importfile);
         $qformat->setRealfilename($realfilename);
-        // $qformat->setMatchgrades($form->matchgrades);
-        // $qformat->setCatfromfile(!empty($form->catfromfile));
-        // $qformat->setContextfromfile(!empty($form->contextfromfile));
         $qformat->setStoponerror(true);
 
         // Do anything before that we need to.
@@ -119,13 +95,10 @@ class xml {
             return false;
         }
 
-        // Log the import into this category.
         $eventparams = [
                 'contextid' => $qformat->category->contextid,
                 'other' => ['format' => $fileformat, 'categoryid' => $qformat->category->id],
         ];
-
-        // --- End Adaption.
 
         $event = \core\event\questions_imported::create($eventparams);
         $event->trigger();

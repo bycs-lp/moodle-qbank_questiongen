@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="question/bank/questiongen/db" VERSION="20250528" COMMENT="XMLDB file for Moodle qtype_questiongen"
+<XMLDB PATH="question/bank/questiongen/db" VERSION="20250602" COMMENT="XMLDB file for Moodle qtype_questiongen"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
@@ -7,7 +7,6 @@
     <TABLE NAME="qbank_questiongen" COMMENT="AI Questions table">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="qformat" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="category" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="qbank category"/>
         <FIELD NAME="story" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="numoftries" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Number of tries"/>

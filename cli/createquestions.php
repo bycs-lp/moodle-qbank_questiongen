@@ -31,7 +31,6 @@ global $DB;
 $DB->delete_records('qbank_questiongen');
 
 $qbankobject = new \stdClass();
-$qbankobject->qformat = 'moodlexml';
 $qbankobject->numofquestions = 1;
 $qbankobject->category = 15;
 $qbankobject->story = 'relativity theory';
