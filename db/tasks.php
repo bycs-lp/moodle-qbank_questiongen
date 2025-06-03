@@ -1,5 +1,5 @@
 <?php
-// This file is part of Moodle - https://moodle.org/
+// This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -12,20 +12,27 @@
 // GNU General Public License for more details.
 //
 // You should have received a copy of the GNU General Public License
-// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Plugin version and other meta-data are defined here.
+ * Definition of scheduled tasks.
  *
- * @package     qbank_questiongen
- * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
- * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @package    qbank_questiongen
+ * @copyright  2025 ISB Bayern
+ * @author     Philipp Memmel
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
-$plugin->component = 'qbank_questiongen';
-$plugin->release = '1.0';
-$plugin->version  = 2025052601;
-$plugin->requires = 2022041900;
-$plugin->maturity = MATURITY_ALPHA;
+$tasks = [
+        [
+                'classname' => 'qbank_questiongen\task\cleanup_task',
+                'blocking' => 0,
+                'minute' => '43',
+                'hour' => '3',
+                'day' => '*',
+                'dayofweek' => '*',
+                'month' => '*'
+        ],
+];

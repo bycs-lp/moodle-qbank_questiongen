@@ -103,6 +103,14 @@ if ($hassiteconfig) {
             PARAM_TEXT
     ));
 
+    $settings->add(new admin_setting_configduration(
+            'qbank/cleanupdelay',
+            get_string('cleanupdelay', 'qbank_questiongen'),
+            get_string('cleanupdelay', 'qbank_questiongen'),
+            30 * DAYSECS,
+            DAYSECS
+    ));
+
     // Add text with link to management as setting.
     $settings->add(new admin_setting_description(
             'qbank_questiongen/managepresetspage',

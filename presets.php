@@ -38,7 +38,7 @@ require_capability('qbank/questiongen:manage', context_system::instance());
 
 echo $OUTPUT->header();
 
-$presetsrecords = $DB->get_records('qbank_questiongen_presets');
+$presetsrecords = $DB->get_records('qbank_questiongen_preset');
 $presets = [];
 foreach ($presetsrecords as $preset) {
     $presets[] = [

@@ -24,9 +24,14 @@
  */
 
 /**
- * Custom code to be run on installing the plugin.
+ * Deploys some initial example presets.
  */
 function xmldb_qbank_questiongen_install() {
-
+    global $CFG, $DB;
+    $initialpresets = file_get_contents($CFG->dirroot . '/question/bank/questiongen/db/initial_presets.json');
+    $presets = json_decode($initialpresets, true);
+    foreach ($presets as $preset) {
+        $DB->insert_record('qbank_questiongen_preset', $preset);
+    }
     return true;
 }

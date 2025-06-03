@@ -26,7 +26,7 @@
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
       </KEYS>
     </TABLE>
-    <TABLE NAME="qbank_questiongen_presets" COMMENT="Table containing the presets for generating AI questions">
+    <TABLE NAME="qbank_questiongen_preset" COMMENT="Table containing the presets for generating AI questions">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="name" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false" COMMENT="Name of the preset"/>

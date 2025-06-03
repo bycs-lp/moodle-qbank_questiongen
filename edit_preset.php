@@ -46,11 +46,11 @@ if (!empty($del)) {
     }
     require_sesskey();
 
-    $preset = $DB->get_record('qbank_questiongen_presets', ['id' => $id]);
+    $preset = $DB->get_record('qbank_questiongen_preset', ['id' => $id]);
     if (!$preset) {
         throw new moodle_exception('exception_presetnotfound', 'qbank_questiongen', '', $id);
     }
-    $preset = $DB->delete_records('qbank_questiongen_presets', ['id' => $id]);
+    $preset = $DB->delete_records('qbank_questiongen_preset', ['id' => $id]);
 
     redirect($returnurl, get_string('presetdeleted', 'qbank_questiongen'));
 }
@@ -77,16 +77,16 @@ if ($preseteditform->is_cancelled()) {
     $record->instructions = trim($data->instructions);
     $record->example = trim($data->example);
     if (!empty($record->id)) {
-        $DB->update_record('qbank_questiongen_presets', $record);
+        $DB->update_record('qbank_questiongen_preset', $record);
     } else {
-        $DB->insert_record('qbank_questiongen_presets', $record);
+        $DB->insert_record('qbank_questiongen_preset', $record);
     }
 
     redirect($returnurl, get_string('presetsaved', 'qbank_questiongen'));
 } else {
     if (!empty($id)) {
         $PAGE->set_url('/question/bank/questiongen/edit_preset.php', ['id' => $id]);
-        $record = $DB->get_record('qbank_questiongen_presets', ['id' => $id]);
+        $record = $DB->get_record('qbank_questiongen_preset', ['id' => $id]);
         $data = new stdClass();
         $data->name = $record->name;
         $data->primer = $record->primer;

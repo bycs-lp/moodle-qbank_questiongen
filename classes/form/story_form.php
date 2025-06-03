@@ -53,7 +53,7 @@ class story_form extends \moodleform {
         $mform->addHelpButton('category', 'category', 'qbank_questiongen');
 
         // Number of questions.
-        $defaultnumofquestions = 4;
+        $defaultnumofquestions = 2;
         $select = $mform->addElement(
                 'select',
                 'numofquestions',
@@ -110,7 +110,7 @@ class story_form extends \moodleform {
         }
 
         // Preset selection.
-        $presetrecords = $DB->get_records('qbank_questiongen_presets', null, 'name ASC');
+        $presetrecords = $DB->get_records('qbank_questiongen_preset');
         $presets = [];
         foreach ($presetrecords as $presetrecord) {
             $presets[$presetrecord->id] = $presetrecord->name;
