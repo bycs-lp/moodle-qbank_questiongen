@@ -53,6 +53,7 @@ https://docs.moodle.org/en/Cron#Setting_up_cron_on_your_system
 $string['editpreset'] = 'Edit the preset before sending it to the AI';
 $string['errornotcreated'] = 'Error: questions were not created';
 $string['errorcreatingquestions'] = 'An error occurred while creating the questions: {$a->failed} out of {$a->total} failed.';
+$string['errorcreatingquestionscritical'] = 'An error occurred while creating the questions. Please retry to generate the questions.';
 $string['example'] = 'Example';
 $string['example_help'] = 'The example shows the AI an example output, to clarify the formatting.';
 $string['exception_presetidmissing'] = 'Preset ID missing';

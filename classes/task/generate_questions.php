@@ -135,6 +135,7 @@ class generate_questions extends \core\task\adhoc_task {
             mtrace('Exception message: ' . $exception->getMessage());
             mtrace('Exception stack trace:');
             mtrace($exception->getTraceAsString());
+            $this->progress->error(get_string('errorcreatingquestionscritical', 'qbank_questiongen'));
         }
     }
 
