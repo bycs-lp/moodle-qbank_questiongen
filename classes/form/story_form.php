@@ -85,7 +85,7 @@ class story_form extends \moodleform {
 
         $courseactivities = [];
         foreach ($modinfo->get_cms() as $cm) {
-            if (in_array($cm->modname, question_generator::get_supported_modtypes())) {
+            if (question_generator::is_cm_supported($cm)) {
                 $courseactivities[$cm->id] = $cm->name;
             }
         }

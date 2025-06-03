@@ -215,7 +215,7 @@ class question_generator {
             if (!in_array($cm->id, $courseactivities)) {
                 continue;
             }
-            if (!in_array($cm->modname, self::get_supported_modtypes())) {
+            if ($this->is_cm_supported($cm)) {
                 debugging('Course module with id ' . $cm->id . ' is currently not supported');
                 continue;
             }
@@ -224,9 +224,18 @@ class question_generator {
         return $story;
     }
 
-    public static function get_supported_modtypes(): array {
-        // TODO Implement support for further modtypes.
-        return ['label', 'page', 'resource'];
+    public static function is_cm_supported(cm_info $cm): bool {
+        if (in_array($cm->modname, ['page, label'])) {
+            return true;
+        }
+        if ($cm->modname === 'resource') {
+            $context = \context_module::instance($cm->id);
+            $fs = get_file_storage();
+            $files = $fs->get_area_files($context->id, 'mod_resource', 'content', 0, 'sortorder DESC, id ASC', false);
+            $file = reset($files);
+            return in_array($file->get_mimetype(), self::get_supported_mimetypes());
+        }
+        return false;
     }
 
     public static function get_supported_mimetypes(): array {
