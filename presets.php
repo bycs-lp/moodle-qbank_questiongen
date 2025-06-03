@@ -44,8 +44,8 @@ foreach ($presetsrecords as $preset) {
     $presets[] = [
             'id' => $preset->id,
             'name' => $preset->name,
-            'primer' => $preset->primer,
-            'instructions' => $preset->instructions,
+            'primer' => format_text($preset->primer, FORMAT_PLAIN, ['filter' => false]),
+            'instructions' => format_text($preset->instructions, FORMAT_PLAIN, ['filter' => false]),
             'example' => '<pre><code>' . s($preset->example) . '</code></pre>',
     ];
 }
