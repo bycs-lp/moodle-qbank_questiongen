@@ -103,7 +103,7 @@ class generate_questions extends \core\task\adhoc_task {
                     $created = \qbank_questiongen\local\xml_importer::parse_questions(
                             $dbrecord->category,
                             $question,
-                            $dbrecord->aiidentifier,
+                            !empty($dbrecord->aiidentifier),
                     );
 
                     // If questions were not created.

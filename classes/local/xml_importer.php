@@ -46,9 +46,7 @@ class xml_importer {
         global $CFG, $DB;
 
         // Eventually add a prefix to the question title. We have to do this in the XML before importing.
-        if ($addidentifier) {
-            $llmresponse->text = self::add_aiidentifiers($llmresponse->text);
-        }
+        $llmresponse->text = self::add_aiidentifiers($llmresponse->text, $addidentifier);
 
         $fileformat = 'xml';
         $filedir = make_request_directory();
@@ -105,7 +103,7 @@ class xml_importer {
         return true;
     }
 
-    public static function add_aiidentifiers(string $xmlquestionasstring): string {
+    public static function add_aiidentifiers(string $xmlquestionasstring, bool $addidentifier): string {
         $aiidentifier = get_config('qbank_questiongen', 'aiidentifier');
         $aiidentifiertag = get_config('qbank_questiongen', 'aiidentifiertag');
 
@@ -114,7 +112,9 @@ class xml_importer {
         }
 
         $xmlasobject = new SimpleXMLElement($xmlquestionasstring);
-        if (!empty($aiidentifier)) {
+        // If the user chose to add an identifier to the question title and the global admin setting provides a proper identifier,
+        // we add this to the question title.
+        if (!empty($aiidentifier) && $addidentifier) {
             if (!isset($xmlasobject->question) || !isset($xmlasobject->question->name) || !isset($xmlasobject->question->name->text)) {
                 // The XML could be broken, so we just output some debugging and return.
                 debugging('Could not add an AI identifier because the XML is broken. Parsed XML:');
@@ -122,6 +122,7 @@ class xml_importer {
             }
             $xmlasobject->question->name->text = $aiidentifier . $xmlasobject->question->name->text;
         }
+        // If we have a global identifier for tags, we add a tag, no matter what the user chose.
         if (!empty($aiidentifiertag)) {
             if (!isset($xmlasobject->tags)) {
                 $xmlasobject->question->addChild('tags');
