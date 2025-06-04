@@ -51,7 +51,9 @@ class question_generator {
      * @return stdClass object containing information about the generated question
      */
     public function generate_question(stdClass $dataobject, bool $sendexistingquestionsascontext): stdClass {
-        global $DB;
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/question/engine/bank.php');
+
         // Build primer.
         $primer = $dataobject->primer;
         $primer .= "Write a question.";
