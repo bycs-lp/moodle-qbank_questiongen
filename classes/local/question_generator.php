@@ -48,9 +48,10 @@ class question_generator {
      * Generate a question by using an external LLM.
      *
      * @param stdClass $dataobject of the stored processing data from questiongen DB table extended with example data.
-     * @return stdClass object containing information about the generated question
+     * @return stdClass|string object containing information about the generated question or string containing an error message
+     *  in case of an error occurred and no question could be generated
      */
-    public function generate_question(stdClass $dataobject, bool $sendexistingquestionsascontext): stdClass {
+    public function generate_question(stdClass $dataobject, bool $sendexistingquestionsascontext): stdClass|string {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/question/engine/bank.php');
 
@@ -84,8 +85,6 @@ class question_generator {
                         "content" => "' . $example . '",
                 ],
         ];
-
-        $generatedquestiontext = '';
 
         $provider = get_config('qbank_questiongen', 'provider'); // OpenAI (default) or Azure
 
@@ -158,6 +157,8 @@ class question_generator {
                 mtrace('Question generation failed. The external LLM returned code ' . $result->get_code() . ':');
                 mtrace($result->get_errormessage());
                 debugging($result->get_debuginfo(), DEBUG_DEVELOPER);
+                // Return the error message.
+                return $result->get_errormessage();
             }
         } else {
             if ($provider === 'Azure') {

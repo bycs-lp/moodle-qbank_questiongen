@@ -187,6 +187,13 @@ class story_form extends \moodleform {
      */
     public function validation($data, $files) {
         // TODO Make validation fail if story is empty or no course modules have been selected
-        return [];
+        $errors = [];
+        if (!empty($data['coursecontents']) && empty($data['courseactivities'])) {
+            $errors['courseactivities'] = get_string('errornoactivitiesselected', 'qbank_questiongen');
+        }
+        if (empty($data['coursecontents']) && empty(trim($data['story']))) {
+            $errors['story'] = get_string('errorstoryempty', 'qbank_questiongen');
+        }
+        return $errors;
     }
 }

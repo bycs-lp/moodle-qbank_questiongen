@@ -82,6 +82,18 @@ class generate_questions extends \core\task\adhoc_task {
                     // Get questions from AI API.
                     $questiongenerator = new question_generator($customdata->contextid);
                     $question = $questiongenerator->generate_question($dbrecord, $customdata->sendexistingquestionsascontext);
+                    if (!is_object($question)) {
+                        // An error occurred.
+                        // We do not retry here, because if the subsystem returns an error it's very likely that it's a general
+                        // one. Retries are only meant to create slightly different questions in case of XML parsing fails.
+                        $update->id = $dbrecord->id;
+                        $update->datemodified = time();
+                        $update->success = 0;
+                        $DB->update_record('qbank_questiongen', $update);
+                        $this->progress->update(10, 100, '');
+                        $this->progress->error($question);
+                        return;
+                    }
 
                     $update->id = $dbrecord->id;
                     $update->datemodified = time();
