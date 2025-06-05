@@ -46,8 +46,8 @@ class cleanup_task extends \core\task\scheduled_task {
     #[\Override]
     public function execute(): void {
         global $DB;
-        $cleanupduration = get_config('cleanupduration', 'enablecleanuprequestlogtask');
-        $idstocleanup = $DB->get_fieldset_select('qbank_questiongen', 'id', 'time < ?',
+        $cleanupduration = get_config('qbank_questiongen', 'cleanupduration');
+        $idstocleanup = $DB->get_fieldset_select('qbank_questiongen', 'id', 'timemodified < ?',
                 [$this->clock->time() - $cleanupduration]);
 
         $chunks = array_chunk($idstocleanup, 100);

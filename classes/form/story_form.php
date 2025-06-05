@@ -49,7 +49,8 @@ class story_form extends \moodleform {
                 fn($context) => $context->contextlevel !== CONTEXT_SYSTEM && $context->contextlevel !== CONTEXT_COURSECAT);
 
         // Question category.
-        $mform->addElement('questioncategory', 'category', get_string('category', 'question'), ['contexts' => $contexts]);
+        $mform->addElement('questioncategory', 'category', get_string('category', 'question'),
+                ['contexts' => $contexts, 'top' => true]);
         $mform->addHelpButton('category', 'category', 'qbank_questiongen');
 
         // Number of questions.
