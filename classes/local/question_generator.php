@@ -18,6 +18,7 @@ namespace qbank_questiongen\local;
 
 use cm_info;
 use assignfeedback_editpdf\pdf;
+use lesson;
 use local_ai_manager\ai_manager_utils;
 use local_ai_manager\manager;
 use question_bank;
@@ -228,7 +229,7 @@ class question_generator {
     }
 
     public static function is_cm_supported(cm_info $cm): bool {
-        if (in_array($cm->modname, ['page, label'])) {
+        if (in_array($cm->modname, ['page, label', 'lesson'])) {
             return true;
         }
         if ($cm->modname === 'resource') {
@@ -246,6 +247,7 @@ class question_generator {
     }
 
     public function extract_content_from_cm(cm_info $cm): string {
+        global $CFG;
         // TODO Eventually also respect course module descriptions and title?
         $content = '';
         $instance = $cm->get_instance_record();
@@ -269,8 +271,19 @@ class question_generator {
                     }
                 }
                 break;
+            case 'lesson':
+                require_once($CFG->dirroot . '/mod/lesson/locallib.php');
+                $lesson = lesson::load($instance->id);
+                $pages = $lesson->load_all_pages();
+                foreach ($pages as $page) {
+                    // We must not use $page->get_contents() here because it requires to have the $PAGE object set up properly for
+                    // the lesson course module which we do not have.
+                    $content .= $page->properties()->contents;
+                }
+                break;
         }
-        return strip_tags($content);
+
+        return $this->format_extracted_cm_content($content);
     }
 
     public function extract_content_from_pdf_or_image(\stored_file $file): string {
@@ -362,5 +375,16 @@ class question_generator {
         $record->timecreated = $time;
         $record->timelastaccessed = $time;
         $DB->insert_record('qbank_questiongen_resource_cache', $record);
+    }
+
+    public function format_extracted_cm_content(string $content): string {
+        // We convert paragraphs to line breaks.
+        $pattern = '/<p(.*?)>((.*?)+)<\/p>/';
+        $replacement = '${2}<br/>';
+        $content = preg_replace($pattern, $replacement, $content);
+        // Then convert all HTML line breaks into text line breaks.
+        $content = str_replace('<br/>', "\n", $content);
+        $content = str_replace('<br>', "\n", $content);
+        return strip_tags($content);
     }
 }

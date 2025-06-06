@@ -42,13 +42,17 @@ class generate_questions extends \core\task\adhoc_task {
     #[\Override]
     public function execute() {
         global $DB;
-        // Read numoftries from settings. This setting sets the number of retries that should be performed if a question generation
-        // fails.
+
         try {
             $customdata = $this->get_custom_data();
             $questiongenids = $customdata->questiongenids;
             [$insql, $inparams] = $DB->get_in_or_equal($questiongenids);
             $questiongenrecords = $DB->get_records_select('qbank_questiongen', "id $insql", $inparams);
+            $questionstocreatecount = count($questiongenrecords);
+
+            $this->start_stored_progress();
+            $this->progress->update(0, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',
+                    ['current' => 0, 'total' => $questionstocreatecount]));
 
             // Before creating questions we need to check, if we need to generate the story from the course content first.
             if (property_exists($customdata, 'courseactivities') && !empty($customdata->courseactivities)) {
@@ -58,12 +62,13 @@ class generate_questions extends \core\task\adhoc_task {
                     $dbrecord->story = $story;
                     $DB->update_record('qbank_questiongen', $dbrecord);
                 }
+                if (empty(trim($story))) {
+                    $this->progress->update(10, 100, '');
+                    $this->progress->error(get_string('errorcoursecontentsempty', 'qbank_questiongen'));
+                    return;
+                }
             }
 
-            $questionstocreatecount = count($questiongenrecords);
-            $this->start_stored_progress();
-            $this->progress->update(0, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',
-                    ['current' => 0, 'total' => $questionstocreatecount]));
 
             // Create questions.
             mtrace("[qbank_questiongen] Creating Questions with AI...\n");

@@ -56,6 +56,7 @@ $string['errorcreatingquestions'] = 'An error occurred while creating the questi
 $string['errorcreatingquestionscritical'] = 'An error occurred while creating the questions. Please retry to generate the questions.';
 $string['errornoactivitiesselected'] = 'If you want to use content from the course to generate questions from you have to select at least one activity';
 $string['errorstoryempty'] = 'You must provide some topic to be able to generate questions.';
+$string['errorcoursecontentsempty'] = 'The content of the selected activities is empty. Questions cannot be generated.';
 $string['example'] = 'Example';
 $string['example_help'] = 'The example shows the AI an example output, to clarify the formatting.';
 $string['exception_presetidmissing'] = 'Preset ID missing';
