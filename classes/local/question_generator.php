@@ -218,7 +218,7 @@ class question_generator {
             if (!in_array($cm->id, $courseactivities)) {
                 continue;
             }
-            if ($this->is_cm_supported($cm)) {
+            if (!$this->is_cm_supported($cm)) {
                 debugging('Course module with id ' . $cm->id . ' is currently not supported');
                 continue;
             }
