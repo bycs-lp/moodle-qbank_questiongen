@@ -8,6 +8,7 @@
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
         <FIELD NAME="category" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="qbank category"/>
+        <FIELD NAME="mode" TYPE="int" LENGTH="1" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="story" TYPE="text" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="numoftries" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Number of tries"/>
         <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="User who create the questions"/>

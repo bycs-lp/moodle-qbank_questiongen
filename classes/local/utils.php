@@ -17,6 +17,7 @@
 namespace qbank_questiongen\local;
 
 use Locale;
+use qbank_questiongen\form\story_form;
 use stdClass;
 
 /**
@@ -42,6 +43,7 @@ class utils {
 
         // Create the DB entry.
         $dbrecord = new \stdClass();
+        $dbrecord->mode = $data->mode;
         $dbrecord->numoftries = get_config('qbank_questiongen', 'numoftries');
         $dbrecord->aiidentifier = !empty($data->addidentifier) ? 1 : 0;
         $dbrecord->category = explode(',', $data->category)[0];
@@ -49,11 +51,14 @@ class utils {
         $dbrecord->timecreated = time();
         $dbrecord->timemodified = 0;
         $dbrecord->tries = 1;
-        if (empty($data->coursecontents)) {
+
+        if (intval($data->mode) === story_form::QUESTIONGEN_MODE_TOPIC) {
+            $dbrecord->story = self::filter_prompts($data->topic);
+        } else if (intval($data->mode) === story_form::QUESTIONGEN_MODE_STORY) {
             $dbrecord->story = self::filter_prompts($data->story);
         } else {
-            // If story should be created from course contents we just leave story empty. It will be filled from inside the adhoc
-            // task later on.
+            // If the story should be created from course contents, we just leave the story field empty.
+            // It will be filled from inside the adhoc task later on.
             $dbrecord->story = '';
         }
 

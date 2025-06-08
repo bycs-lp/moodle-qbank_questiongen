@@ -51,11 +51,13 @@ See <a href="https://docs.moodle.org/en/Cron#Setting_up_cron_on_your_system">
 https://docs.moodle.org/en/Cron#Setting_up_cron_on_your_system
 </a> for more information.';
 $string['editpreset'] = 'Edit the preset before sending it to the AI';
+$string['errornogenerateentriesfound'] = 'No entries for generating questions could be found.';
 $string['errornotcreated'] = 'Error: questions were not created';
 $string['errorcreatingquestions'] = 'An error occurred while creating the questions: {$a->failed} out of {$a->total} failed.';
 $string['errorcreatingquestionscritical'] = 'An error occurred while creating the questions. Please retry to generate the questions.';
 $string['errornoactivitiesselected'] = 'If you want to use content from the course to generate questions from you have to select at least one activity';
-$string['errorstoryempty'] = 'You must provide some topic to be able to generate questions.';
+$string['errorstoryempty'] = 'You must provide content to be able to generate questions.';
+$string['errorstoryempty'] = 'You must provide a topic to be able to generate questions.';
 $string['errorcoursecontentsempty'] = 'The content of the selected activities is empty. Questions cannot be generated.';
 $string['example'] = 'Example';
 $string['example_help'] = 'The example shows the AI an example output, to clarify the formatting.';
@@ -73,6 +75,17 @@ $string['instructions_help'] = 'The instructions tell the AI what to do.';
 $string['linktomanagepresetspage'] = 'Link to presets management page';
 $string['managepresets'] = 'Manage global presets';
 $string['managepresetswarning'] = 'This link leads you to the global management page of presets. Changes which are performed on this page will affect the whole platform';
+$string['mode_help'] = 'Select the mode. You can select between three modes:
+<ul>
+<li><strong>Topic:</strong> Specify a topic the generated questions should be about. The LLM will be instructed to use its training data to generate the questions from.</li>
+<li><strong>Provide content:</strong> Provide the content that the questions should be created from. The LLM will be instructed to not use any data except the one provided. Make sure to provide enough data.</li>
+<li><strong>Course contents:</strong> Contents from the current course is being used to create the questions from. You will be able to select what course contents is being sent to the LLM. The LLM will be instructed to not use any data except the one provided. Make sure to provide enough data.</li>
+</ul>
+';
+$string['mode'] = 'Mode';
+$string['modecoursecontents'] = 'Course contents';
+$string['modestory'] = 'Provide content';
+$string['modetopic'] = 'Topic';
 $string['model'] = 'Model';
 $string['model_desc'] = 'Language model to use. <a href="https://platform.openai.com/docs/models/">More info</a>.';
 $string['name'] = 'Preset name';
@@ -111,9 +124,11 @@ $string['questiongeneratingstatus'] = 'Question {$a->current} out of {$a->total}
 $string['questiongeneratingfinished'] = 'All {$a} question generations have been processed.';
 $string['sendexistingquestionsascontext'] = 'Send existing questions as context';
 $string['sendexistingquestionsascontext_help'] = 'Enable to make the tool send all question titles and question texts from all the questions in the current category to the external AI system to enable the AI system to generate questions that are different from the already existing ones.';
-$string['story'] = 'Topic';
-$string['story_help'] = 'The topic of your questions. You can also copy/paste whole articles, eg from wikipedia. Make sure you include an instruction if the LLM should only use the content you are providing in this textarea or if the LLM is allowed to use data it has access to.';
+$string['story'] = 'Content';
+$string['story_help'] = 'Provide the content the LLM should generate questions from. If this is being used the LLM is being instructed not to use own training data but instead use whatever you insert here. You can also copy/paste whole articles, for example from wikipedia. Make sure you provide enough content to allow the LLM to generate useful questions.';
 $string['tasksuccess'] = 'The question generation task was successfully created';
+$string['topic'] = 'Topic';
+$string['topic_help'] = 'The topic of your questions. Describe the topic you want the LLM to generate questions for.';
 $string['use_coursecontents'] = 'Use course contents as topic instead';
 $string['waitingforadhoctaskstart'] = 'Waiting for background task to start';
 $string['xml_format'] = 'Moodle XML format';

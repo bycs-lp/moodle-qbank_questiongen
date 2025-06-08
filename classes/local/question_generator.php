@@ -21,6 +21,7 @@ use assignfeedback_editpdf\pdf;
 use lesson;
 use local_ai_manager\ai_manager_utils;
 use local_ai_manager\manager;
+use qbank_questiongen\form\story_form;
 use question_bank;
 use stdClass;
 
@@ -58,7 +59,7 @@ class question_generator {
 
         // Build primer.
         $primer = $dataobject->primer;
-        $primer .= "Write a question.";
+        $primer .= "Write a question. ";
 
         $key = get_config('qbank_questiongen', 'key');
 
@@ -70,7 +71,7 @@ class question_generator {
         $example = str_replace("\n", " ", $dataobject->example);
         $example = str_replace("\r", " ", $example);
 
-        $messages = [
+        /*$messages = [
                 [
                         "role" => "system",
                         "content" => "' . $primer . '",
@@ -87,11 +88,11 @@ class question_generator {
                 ],
         ];
 
-        $provider = get_config('qbank_questiongen', 'provider'); // OpenAI (default) or Azure
 
         $headers = [
                 'Content-Type' => 'application/json',
-        ];
+        ];*/
+        $provider = get_config('qbank_questiongen', 'provider'); // OpenAI (default) or Azure
         if ($provider === 'local_ai_manager') {
 
             $messages = [
@@ -136,14 +137,26 @@ class question_generator {
                             ];
                 }
             }
-            $topicinstruction = $sendexistingquestionsascontext ?
-                    'Create a question based on the following json encoded content, only use this content for the question: "' .
-                    $this->escape_json($story) . '"'
-                    : $story;
+
+            $instructionprompt = '';
+            switch ($dataobject->mode) {
+                case story_form::QUESTIONGEN_MODE_TOPIC:
+                    $instructionprompt =
+                            'Create a question about the following topic. Use your own training data to generate it: "' .
+                            $this->escape_json($story) . '"';
+                    break;
+                case story_form::QUESTIONGEN_MODE_STORY:
+                case story_form::QUESTIONGEN_MODE_COURSECONTENTS:
+                    $instructionprompt =
+                            'Create a question from the following contents. Only use this content and do not use any training data: "' .
+                            $this->escape_json($story) . '"';
+                    break;
+            }
+
             $messages[] =
                     [
                             'sender' => 'user',
-                            'message' => $topicinstruction,
+                            'message' => $instructionprompt,
                     ];
 
             $manager = new \local_ai_manager\manager('questiongeneration');

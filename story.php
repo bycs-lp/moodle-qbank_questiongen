@@ -22,6 +22,8 @@
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+use qbank_questiongen\form\story_form;
+
 require(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/question/editlib.php');
 
@@ -93,7 +95,7 @@ if ($mform->is_cancelled()) {
             'sendexistingquestionsascontext' => !empty($data->sendexistingquestionsascontext),
     ];
 
-    if (!empty($data->coursecontents)) {
+    if (intval($data->mode) === story_form::QUESTIONGEN_MODE_COURSECONTENTS) {
         $customdata['courseactivities'] = $data->courseactivities;
     }
 

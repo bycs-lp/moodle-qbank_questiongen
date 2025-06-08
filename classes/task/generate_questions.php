@@ -48,7 +48,13 @@ class generate_questions extends \core\task\adhoc_task {
             $questiongenids = $customdata->questiongenids;
             [$insql, $inparams] = $DB->get_in_or_equal($questiongenids);
             $questiongenrecords = $DB->get_records_select('qbank_questiongen', "id $insql", $inparams);
+            if (empty($questiongenrecords)) {
+                // It should not really happen that we have no questions here.
+                // Exception will be caught at the end. The task will finish silently.
+                throw new \moodle_exception('errornogenerateentriesfound', 'qbank_questiongen');
+            }
             $questionstocreatecount = count($questiongenrecords);
+
 
             $this->start_stored_progress();
             $this->progress->update(0, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',

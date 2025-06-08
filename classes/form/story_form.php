@@ -37,9 +37,12 @@ require_once($CFG->libdir . '/formslib.php');
  * @category    admin
  */
 class story_form extends \moodleform {
-    /**
-     * Defines forms elements
-     */
+
+    const QUESTIONGEN_MODE_TOPIC = 1;
+    const QUESTIONGEN_MODE_STORY = 2;
+    const QUESTIONGEN_MODE_COURSECONTENTS = 3;
+
+    #[\Override]
     public function definition() {
         global $DB, $OUTPUT;
 
@@ -47,6 +50,9 @@ class story_form extends \moodleform {
         $contexts = $this->_customdata['contexts']->having_cap('moodle/question:add');
         $contexts = array_filter($contexts,
                 fn($context) => $context->contextlevel !== CONTEXT_SYSTEM && $context->contextlevel !== CONTEXT_COURSECAT);
+
+        $mform->addElement('hidden', 'cmid', $this->_customdata['cmid']);
+        $mform->setType('cmid', PARAM_INT);
 
         // Question category.
         $mform->addElement('questioncategory', 'category', get_string('category', 'question'),
@@ -64,6 +70,28 @@ class story_form extends \moodleform {
         $select->setSelected($defaultnumofquestions);
         $mform->setType('numofquestions', PARAM_INT);
 
+        $mform->addElement('select', 'mode', get_string('mode', 'qbank_questiongen'),
+                [
+                        self::QUESTIONGEN_MODE_TOPIC => get_string('modetopic', 'qbank_questiongen'),
+                        self::QUESTIONGEN_MODE_STORY => get_string('modestory', 'qbank_questiongen'),
+                        self::QUESTIONGEN_MODE_COURSECONTENTS => get_string('modecoursecontents', 'qbank_questiongen'),
+                ]
+        );
+        $mform->setType('mode', PARAM_INT);;
+        $mform->setDefault('mode', self::QUESTIONGEN_MODE_TOPIC);
+        $mform->addHelpButton('mode', 'mode', 'qbank_questiongen');
+
+        // Story.
+        $mform->addElement(
+                'textarea',
+                'topic',
+                get_string('topic', 'qbank_questiongen'),
+                'wrap="virtual" rows="10" cols="50"'
+        );
+        $mform->setType('topic', PARAM_RAW);
+        $mform->addHelpButton('topic', 'topic', 'qbank_questiongen');
+        $mform->hideIf('topic', 'mode', 'neq', self::QUESTIONGEN_MODE_TOPIC);;
+
         // Story.
         $mform->addElement(
                 'textarea',
@@ -73,12 +101,7 @@ class story_form extends \moodleform {
         );
         $mform->setType('story', PARAM_RAW);
         $mform->addHelpButton('story', 'story', 'qbank_questiongen');
-        $mform->hideIf('story', 'coursecontents', 'eq', '1');
-
-        // Use course contents instead.
-        $mform->addElement('checkbox', 'coursecontents', get_string('use_coursecontents', 'qbank_questiongen'));
-        $mform->setDefault('coursecontents', 0); // Default of "no"
-        $mform->setType('coursecontents', PARAM_BOOL);
+        $mform->hideIf('story', 'mode', 'neq', self::QUESTIONGEN_MODE_STORY);
 
         [, $cmrec] = get_module_from_cmid($this->_customdata['cmid']);
 
@@ -93,22 +116,7 @@ class story_form extends \moodleform {
 
         $mform->addElement('autocomplete', 'courseactivities', get_string('activitylist', 'qbank_questiongen'), $courseactivities,
                 ['multiple' => true]);
-        $mform->hideIf('courseactivities', 'coursecontents');
-
-        $mform->addElement('checkbox', 'sendexistingquestionsascontext',
-                get_string('sendexistingquestionsascontext', 'qbank_questiongen'));
-        $mform->setDefault('sendexistingquestionsascontext', 1);
-        $mform->setType('sendexistingquestionsascontext', PARAM_BOOL);
-
-        $aiidentifier = get_config('qbank_questiongen', 'aiidentifier');
-        if (!empty($aiidentifier)) {
-            // Add a prefix to the question name.
-            $mform->addElement('checkbox', 'addidentifier', get_string('addidentifier', 'qbank_questiongen', $aiidentifier));
-            $mform->setDefault('addidentifier', 1);
-            $mform->setType('addidentifier', PARAM_BOOL);
-        } else {
-            $mform->addElement('hidden', 'addidentifier', 0);
-        }
+        $mform->hideIf('courseactivities', 'mode', 'neq', self::QUESTIONGEN_MODE_COURSECONTENTS);;
 
         // Preset selection.
         $presetrecords = $DB->get_records('qbank_questiongen_preset');
@@ -170,8 +178,20 @@ class story_form extends \moodleform {
             $mform->hideIf('example' . $id, 'preset', 'neq', "$id");
         }
 
-        $mform->addElement('hidden', 'cmid', $this->_customdata['cmid']);
-        $mform->setType('cmid', PARAM_INT);
+        $mform->addElement('checkbox', 'sendexistingquestionsascontext',
+                get_string('sendexistingquestionsascontext', 'qbank_questiongen'));
+        $mform->setDefault('sendexistingquestionsascontext', 1);
+        $mform->setType('sendexistingquestionsascontext', PARAM_BOOL);
+
+        $aiidentifier = get_config('qbank_questiongen', 'aiidentifier');
+        if (!empty($aiidentifier)) {
+            // Add a prefix to the question name.
+            $mform->addElement('checkbox', 'addidentifier', get_string('addidentifier', 'qbank_questiongen', $aiidentifier));
+            $mform->setDefault('addidentifier', 1);
+            $mform->setType('addidentifier', PARAM_BOOL);
+        } else {
+            $mform->addElement('hidden', 'addidentifier', 0);
+        }
 
         $buttonarray = [];
         $buttonarray[] = &$mform->createElement('submit', 'submitbutton', get_string('generate', 'qbank_questiongen'));
@@ -179,21 +199,17 @@ class story_form extends \moodleform {
         $mform->addGroup($buttonarray, 'buttonar', '', [' '], false);
     }
 
-    /**
-     * Form validation
-     *
-     * @param array $data
-     * @param array $files
-     * @return array
-     */
+    #[\Override]
     public function validation($data, $files) {
-        // TODO Make validation fail if story is empty or no course modules have been selected
         $errors = [];
-        if (!empty($data['coursecontents']) && empty($data['courseactivities'])) {
-            $errors['courseactivities'] = get_string('errornoactivitiesselected', 'qbank_questiongen');
+        if ($data['mode'] === self::QUESTIONGEN_MODE_TOPIC && empty(trim($data['topic']))) {
+            $errors['topic'] = get_string('errortopicempty', 'qbank_questiongen');
         }
-        if (empty($data['coursecontents']) && empty(trim($data['story']))) {
+        if ($data['mode'] === self::QUESTIONGEN_MODE_STORY && empty(trim($data['story']))) {
             $errors['story'] = get_string('errorstoryempty', 'qbank_questiongen');
+        }
+        if ($data['mode'] === self::QUESTIONGEN_MODE_COURSECONTENTS && empty($data['courseactivities'])) {
+            $errors['courseactivities'] = get_string('errornoactivitiesselected', 'qbank_questiongen');
         }
         return $errors;
     }
