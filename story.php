@@ -74,6 +74,7 @@ $qbankaction = new \core_question\output\qbank_action_menu($thispageurl);
 echo $renderer->render($qbankaction);
 
 $mform = new \qbank_questiongen\form\story_form(null, ['contexts' => $contexts, 'cmid' => $cmid]);
+$provider = get_config('qbank_questiongen', 'provider');
 
 if ($mform->is_cancelled()) {
     redirect($CFG->wwwroot . '/question/edit.php?cmid=' . $cmid);
@@ -140,7 +141,16 @@ if ($mform->is_cancelled()) {
     ];
     // Load the ready template.
     echo $OUTPUT->render_from_template('qbank_questiongen/loading', $datafortemplate);
+    if ($provider === 'local_ai_manager') {
+        $PAGE->requires->js_call_amd('local_ai_manager/warningbox', 'renderWarningBox', ['#ai_manager_warningbox']);
+    }
 } else {
+    echo $OUTPUT->render_from_template('qbank_questiongen/intro', []);
+
+    if ($provider === 'local_ai_manager') {
+        $PAGE->requires->js_call_amd('local_ai_manager/infobox', 'renderInfoBox',
+                ['qbank_questiongen', $USER->id, '#ai_manager_infobox', ['questiongeneration', 'itt']]);
+    }
     $mform->display();
 }
 

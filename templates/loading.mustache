@@ -32,6 +32,8 @@
         "cron": "0"
     }
 }}
+{{> qbank_questiongen/intro }}
+
 {{#cron}}
     <div class="alert-warning">
         {{#str}}cronoverdue, qbank_questiongen{{/str}}
@@ -42,7 +44,9 @@
     {{{progressbar}}}
 </div>
 
-<p class="d-flex">
+<div id="ai_manager_warningbox"></div>
+
+<p class="d-flex mt-5">
     <a id="localaiquestions_backtocourse" class="btn btn-primary m-1" href="{{config.wwwroot}}/course/view.php?id={{courseid}}">
         {{#str}}backtocourse, qbank_questiongen{{/str}}
     </a>

@@ -49,7 +49,7 @@ class utils {
         $dbrecord->category = explode(',', $data->category)[0];
         $dbrecord->userid = $USER->id;
         $dbrecord->timecreated = time();
-        $dbrecord->timemodified = 0;
+        $dbrecord->timemodified = time();
         $dbrecord->tries = 1;
 
         if (intval($data->mode) === story_form::QUESTIONGEN_MODE_TOPIC) {

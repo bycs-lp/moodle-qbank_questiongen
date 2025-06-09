@@ -98,8 +98,8 @@ $string['openaikeydesc'] = 'You can get an OpenAI API key from <a href="https://
 Select the "+ Create New Secret Key" button and copy the key to this field.<br>
 Note that you need to have an OpenAI account that includes billing settings to get an API key.';
 $string['outof'] = 'out of';
-$string['pluginname'] = 'AI text to questions generator';
-$string['pluginname_desc'] = 'This plugin allows you to automatically generate questions from a text using a language AI (eg chatGPT).';
+$string['pluginname'] = 'AI questions generator';
+$string['pluginname_desc'] = 'This feature allows you to automatically generate questions from text and course content using a large language model.';
 $string['pluginname_help'] = 'Use this plugin from the course administration menu or the question bank.';
 $string['preset'] = 'Preset';
 $string['presetdeleteconfirm'] = 'Do you really want to delete this preset?';
@@ -110,14 +110,14 @@ $string['presetinstructions'] = 'Preset instructions';
 $string['presetname'] = 'Preset name';
 $string['presetnamedesc'] = 'Name that will be shown to the user';
 $string['presetprimer'] = 'Preset primer';
-$string['presetprimerdefault1'] = "You are a helpful teacher's assistant that creates multiple choice questions based on the topics given by the user.";
+$string['presetprimerdefault1'] = 'You are a helpful teacher\'s assistant that creates multiple choice questions based on the topics given by the user.';
 $string['presets'] = 'Presets';
 $string['presetsaved'] = 'Preset has been saved';
 $string['preview'] = 'Preview question in new tab';
 $string['primer'] = 'Primer';
 $string['primer_help'] = 'The primer is the first information to be sent to the AI, priming it for its task.';
 $string['privacy:metadata'] = 'AI text to questions generator does not store any personal data.';
-$string['provider'] = 'GPT provider';
+$string['provider'] = 'LLM provider';
 $string['providerdesc'] = 'Select if you are using Azure of OpenAI';
 $string['questiongen:manage'] = 'Manage questions presets';
 $string['questiongeneratingstatus'] = 'Question {$a->current} out of {$a->total} processed.';
