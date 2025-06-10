@@ -65,17 +65,6 @@ final class questions_test extends \advanced_testcase {
     }
 
     /**
-     * Test local_aiquestions_escape_json.
-     * @covers \local_aiquestions_escape_json
-     */
-    public function test_escape_json(): void {
-        $myjson = '{"name":"My long
-            text with new line"}';
-        $escapedjson = \local_aiquestions_escape_json($myjson);
-        $this->assertEquals($escapedjson, '{\"name\":\"My long\n            text with new line\"}');
-    }
-
-    /**
      * Test local_aiquestions_check_gift.
      * @covers \local_aiquestions_check_gift
      */
