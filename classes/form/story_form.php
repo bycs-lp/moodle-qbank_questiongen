@@ -14,15 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
-/**
- * Story Form Class is defined here.
- *
- * @package     qbank_questiongen
- * @category    admin
- * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
- * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 namespace qbank_questiongen\form;
 
 use qbank_questiongen\local\question_generator;
@@ -31,15 +22,21 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->libdir . '/formslib.php');
 
 /**
- * Form to get the story from the user.
+ * Form to get the settings for spawning the question generation task.
  *
  * @package     qbank_questiongen
- * @category    admin
+ * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
+ * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class story_form extends \moodleform {
 
+    /** @var int constant defining the question generation mode: generate questions based on a topic. */
     const QUESTIONGEN_MODE_TOPIC = 1;
+
+    /** @var int constant defining the question generation mode: generate questions based on content entered by the user. */
     const QUESTIONGEN_MODE_STORY = 2;
+
+    /** @var int constant defining the question generation mode: generate questions based on course contents. */
     const QUESTIONGEN_MODE_COURSECONTENTS = 3;
 
     #[\Override]
@@ -56,7 +53,7 @@ class story_form extends \moodleform {
 
         // Question category.
         $mform->addElement('questioncategory', 'category', get_string('category', 'question'),
-                ['contexts' => $contexts, 'top' => true]);
+                ['contexts' => $contexts]);
         $mform->addHelpButton('category', 'category', 'qbank_questiongen');
 
         // Number of questions.

@@ -22,7 +22,7 @@
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-defined('MOODLE_INTERNAL') || die();
+
 /**
  * Add the AI Questions menu to the course administration menu.
  *
@@ -36,7 +36,7 @@ function qbank_questiongen_extend_settings_navigation($settingsnav, $context) {
     if (has_capability('moodle/question:add', $context)) {
 
         if ($settingnode = $settingsnav->find('courseadmin', navigation_node::TYPE_COURSE)) {
-            $strfather = get_string('aiquestions', 'qbank_questiongen');
+            $strfather = get_string('pluginname', 'qbank_questiongen');
             $fathernode = navigation_node::create(
                 $strfather,
                 null,

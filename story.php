@@ -60,7 +60,6 @@ $PAGE->set_url($thispageurl);
 
 require_once("$CFG->libdir/formslib.php");
 
-// $PAGE->set_context(\context_system::instance());
 $PAGE->set_heading(get_string('pluginname', 'qbank_questiongen'));
 $PAGE->set_title(get_string('pluginname', 'qbank_questiongen'));
 $PAGE->set_pagelayout('standard');
@@ -81,7 +80,7 @@ if ($mform->is_cancelled()) {
 } else if ($data = $mform->get_data()) {
 
     // Call the adhoc task.
-    // we need the courseid anyway so get it from cmid
+    // We need the courseid anyway so get it from cmid.
     $cm = get_coursemodule_from_id('', $cmid);
     if ($cm) {
         $courseid = $cm->course;

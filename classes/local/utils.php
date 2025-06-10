@@ -84,8 +84,15 @@ class utils {
         return $questiongenids;
     }
 
+    /**
+     * Applies local filters to the prompts.
+     *
+     * For example, replaces {{currentlang}} by the current language of the user.
+     *
+     * @param string $prompt The prompt to filter
+     * @return string The filtered prompt
+     */
     public static function filter_prompts(string $prompt): string {
         return str_replace('{{currentlang}}', Locale::getDisplayLanguage(current_language(), 'en'), $prompt);
     }
-
 }

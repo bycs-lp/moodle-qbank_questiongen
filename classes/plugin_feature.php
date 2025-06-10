@@ -28,6 +28,7 @@ use core_question\local\bank\navigation_node_base;
  */
 class plugin_feature extends \core_question\local\bank\plugin_features_base {
 
+    #[\Override]
     public function get_navigation_node(): ?navigation_node_base {
         return new navigation();
     }

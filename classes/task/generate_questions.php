@@ -14,6 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
+namespace qbank_questiongen\task;
+
+use qbank_questiongen\local\question_generator;
+
 /**
  * Adhoc task for questions generation.
  *
@@ -21,19 +25,6 @@
  * @category    admin
  * @copyright   2023 Ruthy Salomon <ruthy.salomon@gmail.com> , Yedidia Klein <yedidia@openapp.co.il>
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
-namespace qbank_questiongen\task;
-
-use qbank_questiongen\local\question_generator;
-
-defined('MOODLE_INTERNAL') || die();
-
-/**
- * The question generator adhoc task.
- *
- * @package     qbank_questiongen
- * @category    admin
  */
 class generate_questions extends \core\task\adhoc_task {
 
@@ -55,7 +46,6 @@ class generate_questions extends \core\task\adhoc_task {
             }
             $questionstocreatecount = count($questiongenrecords);
 
-
             $this->start_stored_progress();
             $this->progress->update(0, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',
                     ['current' => 0, 'total' => $questionstocreatecount]));
@@ -74,7 +64,6 @@ class generate_questions extends \core\task\adhoc_task {
                     return;
                 }
             }
-
 
             // Create questions.
             mtrace("[qbank_questiongen] Creating Questions with AI...\n");
@@ -162,6 +151,11 @@ class generate_questions extends \core\task\adhoc_task {
         }
     }
 
+    /**
+     * Sets the initial progress of the associated progress bar.
+     *
+     * It adds a message that currently one is waiting for the adhoc task to be picked up.
+     */
     public function set_initial_progress(): void {
         $this->progress->update_full(0, get_string('waitingforadhoctaskstart', 'qbank_questiongen'));
     }
@@ -171,5 +165,4 @@ class generate_questions extends \core\task\adhoc_task {
         // We don't want to retry this task.
         return false;
     }
-
 }

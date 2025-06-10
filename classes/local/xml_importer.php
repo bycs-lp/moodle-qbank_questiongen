@@ -33,9 +33,9 @@ class xml_importer {
      * Parse the XML questions.
      *
      * @param int $categoryid the question category to import the question to
-     * @param stdClass $llmresponse the $llmresponse object that contains the question XML
+     * @param stdClass $llmresponse the LLM response object that contains the question XML
      * @param bool $addidentifier if the question should be prefixed
-     * @return true on success, false otherweise
+     * @return true on success, false otherwise
      */
     public static function parse_questions(
             int $categoryid,
@@ -103,6 +103,19 @@ class xml_importer {
         return true;
     }
 
+    /**
+     * Helper function add AI identifiers to the question title and as tag.
+     *
+     * We cannot hook into the XML importing mechanism of moodle. We also cannot easily get the id of the imported question.
+     * So we're left with adding the identifier straight to the XML before importing the questions.
+     * This function adds an AI identifier prefix (admin setting) to the question title if the user has selected it.
+     * If the tag subsystem is enabled in the moodle instance and the related admin setting is set it will also add a tag
+     * (independent of what the user has selected or not).
+     *
+     * @param string $xmlquestionasstring the question as XML string
+     * @param bool $addidentifier if the user wants to add an identifier to the question title
+     * @return string the altered XML string
+     */
     public static function add_aiidentifiers(string $xmlquestionasstring, bool $addidentifier): string {
         $aiidentifier = get_config('qbank_questiongen', 'aiidentifier');
         $aiidentifiertag = get_config('qbank_questiongen', 'aiidentifiertag');
@@ -115,7 +128,8 @@ class xml_importer {
         // If the user chose to add an identifier to the question title and the global admin setting provides a proper identifier,
         // we add this to the question title.
         if (!empty($aiidentifier) && $addidentifier) {
-            if (!isset($xmlasobject->question) || !isset($xmlasobject->question->name) || !isset($xmlasobject->question->name->text)) {
+            if (!isset($xmlasobject->question) || !isset($xmlasobject->question->name) ||
+                    !isset($xmlasobject->question->name->text)) {
                 // The XML could be broken, so we just output some debugging and return.
                 debugging('Could not add an AI identifier because the XML is broken. Parsed XML:');
                 debugging($xmlasobject->asXML());

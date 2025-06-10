@@ -16,9 +16,6 @@
 
 namespace qbank_questiongen\form;
 
-use local_ai_manager\base_instance;
-use local_ai_manager\local\connector_factory;
-
 defined('MOODLE_INTERNAL') || die;
 
 global $CFG;
@@ -34,9 +31,8 @@ require_once($CFG->libdir . '/formslib.php');
  */
 class edit_preset_form extends \moodleform {
 
-    /**
-     * Form definition.
-     */
+
+    #[\Override]
     public function definition() {
         $mform = &$this->_form;
         if (!empty($this->_customdata['id'])) {
@@ -63,15 +59,21 @@ class edit_preset_form extends \moodleform {
 
     }
 
-    /**
-     * Some extra validation.
-     *
-     * @param array $data array of ("fieldname"=>value) of submitted data
-     * @param array $files array of uploaded files "element_name"=>tmp_file_path
-     * @return array of "element_name"=>"error_description" if there are errors,
-     *         or an empty array if everything is OK (true allowed for backwards compatibility too).
-     */
+    #[\Override]
     public function validation($data, $files): array {
-        return [];
+        $errors = [];
+        if (empty(trim($data['name']))) {
+            $errors['name'] = get_string('errorformfieldempty', 'qbank_questiongen');
+        }
+        if (empty(trim($data['primer']))) {
+            $errors['primer'] = get_string('errorformfieldempty', 'qbank_questiongen');
+        }
+        if (empty(trim($data['instructions']))) {
+            $errors['instructions'] = get_string('errorformfieldempty', 'qbank_questiongen');
+        }
+        if (trim(empty($data['example']))) {
+            $errors['example'] = get_string('errorformfieldempty', 'qbank_questiongen');
+        }
+        return $errors;
     }
 }
