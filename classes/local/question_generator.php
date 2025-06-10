@@ -229,7 +229,7 @@ class question_generator {
     }
 
     public static function is_cm_supported(cm_info $cm): bool {
-        if (in_array($cm->modname, ['page, label', 'lesson', 'book'])) {
+        if (in_array($cm->modname, ['page, label', 'lesson', 'book', 'folder'])) {
             return true;
         }
         if ($cm->modname === 'resource') {
@@ -287,6 +287,20 @@ class question_generator {
                 $chapters = book_preload_chapters($book);
                 foreach ($chapters as $chapter) {
                     $content .= $chapter->title . "\n" . $chapter->content . "\n\n";
+                }
+                break;
+            case 'folder':
+                $context = \context_module::instance($cm->id);
+                $fs = get_file_storage();
+                $files = $fs->get_area_files($context->id, 'mod_folder', 'content', 0, 'id ASC', false);
+                foreach ($files as $file) {
+                    if (!empty($file) && in_array($file->get_mimetype(), self::get_supported_mimetypes())) {
+                        if (in_array($file->get_mimetype(), self::ITT_MIMETYPES)) {
+                            $content = $this->extract_content_from_pdf_or_image($file);
+                        } else {
+                            $content = $file->get_content();
+                        }
+                    }
                 }
                 break;
         }

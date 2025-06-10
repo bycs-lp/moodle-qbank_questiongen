@@ -117,6 +117,7 @@ class story_form extends \moodleform {
         $mform->addElement('autocomplete', 'courseactivities', get_string('activitylist', 'qbank_questiongen'), $courseactivities,
                 ['multiple' => true]);
         $mform->hideIf('courseactivities', 'mode', 'neq', self::QUESTIONGEN_MODE_COURSECONTENTS);;
+        $mform->addHelpButton('courseactivities', 'activitylist', 'qbank_questiongen');
 
         // Preset selection.
         $presetrecords = $DB->get_records('qbank_questiongen_preset');

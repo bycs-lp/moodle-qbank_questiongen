@@ -26,6 +26,16 @@
 defined('MOODLE_INTERNAL') || die();
 
 $string['activitylist'] = 'List of activities';
+$string['activitylist_help'] = 'Select the activities that should be used to generate questions. You can select multiple activities. <strong>Please note that sending a lot of content can cause high costs. Also note that not all activity types are supported.</strong><br/>
+Currently supported are:
+<ul>
+  <li>Text and media area</li>
+  <li>Page</li>
+  <li>File (text-based files types, images and PDF)</li>
+  <li>Folder (all folder files with text-based file types, images or PDF, including subdirectories)</li>
+  <li>Lesson</li>
+  <li>Book</li>
+</ul>';
 $string['addidentifier'] = 'Add a preconfigured prefix ("{$a}") to the question name';
 $string['addpreset'] = 'Add preset';
 $string['aiidentifiersetting'] = 'Question name prefix';
