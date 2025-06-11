@@ -40,7 +40,7 @@ class cleanup_task extends \core\task\scheduled_task {
 
     #[\Override]
     public function get_name(): string {
-        return get_string('cleanuptask', 'local_ai_manager');
+        return get_string('cleanuptask', 'qbank_questiongen');
     }
 
     #[\Override]

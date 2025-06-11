@@ -150,7 +150,9 @@ class question_generator {
             } else {
                 mtrace('Question generation failed. The external LLM returned code ' . $result->get_code() . ':');
                 mtrace($result->get_errormessage());
-                debugging($result->get_debuginfo(), DEBUG_DEVELOPER);
+                if (!empty($result->get_debuginfo())) {
+                    mtrace($result->get_debuginfo());
+                }
                 // Return the error message.
                 return $result->get_errormessage();
             }

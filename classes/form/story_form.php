@@ -200,13 +200,13 @@ class story_form extends \moodleform {
     #[\Override]
     public function validation($data, $files) {
         $errors = [];
-        if ($data['mode'] === self::QUESTIONGEN_MODE_TOPIC && empty(trim($data['topic']))) {
+        if (intval($data['mode']) === self::QUESTIONGEN_MODE_TOPIC && empty(trim($data['topic']))) {
             $errors['topic'] = get_string('errortopicempty', 'qbank_questiongen');
         }
-        if ($data['mode'] === self::QUESTIONGEN_MODE_STORY && empty(trim($data['story']))) {
+        if (intval($data['mode']) === self::QUESTIONGEN_MODE_STORY && empty(trim($data['story']))) {
             $errors['story'] = get_string('errorstoryempty', 'qbank_questiongen');
         }
-        if ($data['mode'] === self::QUESTIONGEN_MODE_COURSECONTENTS && empty($data['courseactivities'])) {
+        if (intval($data['mode']) === self::QUESTIONGEN_MODE_COURSECONTENTS && empty($data['courseactivities'])) {
             $errors['courseactivities'] = get_string('errornoactivitiesselected', 'qbank_questiongen');
         }
         return $errors;
