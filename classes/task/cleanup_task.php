@@ -46,9 +46,9 @@ class cleanup_task extends \core\task\scheduled_task {
     #[\Override]
     public function execute(): void {
         global $DB;
-        $cleanupduration = get_config('qbank_questiongen', 'cleanupduration');
+        $cleanupdelay = get_config('qbank_questiongen', 'cleanupdelay');
         $idstocleanup = $DB->get_fieldset_select('qbank_questiongen', 'id', 'timemodified < ?',
-                [$this->clock->time() - $cleanupduration]);
+                [$this->clock->time() - $cleanupdelay]);
 
         $chunks = array_chunk($idstocleanup, 100);
         $deleted = 0;
@@ -63,7 +63,7 @@ class cleanup_task extends \core\task\scheduled_task {
 
         /** @var adhoc_task $task */
         foreach ($tasks as $task) {
-            if ($task->get_attempts_available() === 0 && $task->get_timestarted() < $this->clock->time() - $cleanupduration) {
+            if ($task->get_attempts_available() === 0 && $task->get_timestarted() < $this->clock->time() - $cleanupdelay) {
                 mtrace('Deleting old task ' . $task->get_id() . ' from task_adhoc table.');
                 mtrace('Customdata: ' . json_encode($task->get_custom_data()));
                 $DB->delete_records('task_adhoc', ['id' => $task->get_id()]);
