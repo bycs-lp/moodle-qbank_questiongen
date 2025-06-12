@@ -103,7 +103,7 @@ if ($hassiteconfig) {
     ));
 
     $settings->add(new admin_setting_configduration(
-            'qbank/cleanupdelay',
+            'qbank_questiongen/cleanupdelay',
             get_string('cleanupdelay', 'qbank_questiongen'),
             get_string('cleanupdelay', 'qbank_questiongen'),
             30 * DAYSECS,
