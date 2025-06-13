@@ -39,14 +39,13 @@ class generate_questions extends \core\task\adhoc_task {
             $questiongenids = $customdata->questiongenids;
             [$insql, $inparams] = $DB->get_in_or_equal($questiongenids);
             $questiongenrecords = $DB->get_records_select('qbank_questiongen', "id $insql", $inparams);
+            $this->start_stored_progress();
             if (empty($questiongenrecords)) {
                 // It should not really happen that we have no questions here.
                 // Exception will be caught at the end. The task will finish silently.
                 throw new \moodle_exception('errornogenerateentriesfound', 'qbank_questiongen');
             }
             $questionstocreatecount = count($questiongenrecords);
-
-            $this->start_stored_progress();
             $this->progress->update(0, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',
                     ['current' => 0, 'total' => $questionstocreatecount]));
 
@@ -143,10 +142,16 @@ class generate_questions extends \core\task\adhoc_task {
             }
 
         } catch (\Exception $exception) {
+            set_debugging(DEBUG_DEVELOPER, true);;
             mtrace('Exception thrown during task. Task will not be requeued. This is just for debugging purposes.');
             mtrace('Exception message: ' . $exception->getMessage());
             mtrace('Exception stack trace:');
             mtrace($exception->getTraceAsString());
+            if ($this->progress->get_percent() === 0.0) {
+                // If no progress has been made yet, set it to a low number so at least a bit of a red bar signaling that an error
+                // has occurred is visible.
+                $this->progress->update_full(10, '');
+            }
             $this->progress->error(get_string('errorcreatingquestionscritical', 'qbank_questiongen'));
         }
     }
