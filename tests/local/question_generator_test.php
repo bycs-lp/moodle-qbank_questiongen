@@ -49,7 +49,7 @@ final class question_generator_test extends \advanced_testcase {
         $questioncategory2 = $questionplugingenerator->create_question_category(['contextid' => $qbankcminfo->context->id]);
 
         $generatedxmlfixture = file_get_contents($CFG->dirroot . '/question/bank/questiongen/tests/fixtures/multichoice.xml');
-        $questiongenerator = $this->getMockBuilder(\qbank_questiongen\local\question_generator::class)
+        $questiongenerator = $this->getMockBuilder(question_generator::class)
             ->setConstructorArgs([$qbankcminfo->context->id])->onlyMethods(['retrieve_llm_response'])->getMock();
         $questiongenerator->method('retrieve_llm_response')->willReturn(['generatedquestiontext' => $generatedxmlfixture,
                 'errormessage' => '']);
@@ -180,7 +180,7 @@ final class question_generator_test extends \advanced_testcase {
         $filerecord['filename'] = 'testfile.txt';
         $file = $fs->create_file_from_string($filerecord, $testcontent);
 
-        $questiongenerator = $this->getMockBuilder(\qbank_questiongen\local\question_generator::class)
+        $questiongenerator = $this->getMockBuilder(question_generator::class)
             ->setConstructorArgs([$qbankcminfo->context->id])
             ->onlyMethods(['extract_content_from_pdf_or_image'])
             ->getMock();
@@ -192,6 +192,7 @@ final class question_generator_test extends \advanced_testcase {
 
         // Test a PDF file. We mock the extraction of the content from the PDF. We actually just check if the correct method is
         // being called and assume the extraction of the content (which is done by an external LLM) will return the text.
+        // The fixture PDF is only being used to determine its mimetype and call the method.
         $filerecord['filename'] = 'testpdf.pdf';
         $file = $fs->create_file_from_string($filerecord,
                 file_get_contents($CFG->dirroot . '/question/bank/questiongen/tests/fixtures/testpdf.pdf'));
@@ -199,11 +200,75 @@ final class question_generator_test extends \advanced_testcase {
         $this->assertEquals('Extracted PDF or image content', $content);
         $file->delete();
 
-        // TODO Test the other supported module types.
+        $filerecord['filename'] = 'testimage.png';
+        $file = $fs->create_file_from_string($filerecord, file_get_contents($CFG->dirroot . '/pix/s/approve.png'));
+        $content = $questiongenerator->extract_content_from_cm(get_fast_modinfo($course)->get_cm($resource->cmid));
+        $this->assertEquals('Extracted PDF or image content', $content);
+        $file->delete();
+
+        // Test mod_folder.
+        $testcontent = 'Very interesting content in a file in a folder to generate questions from';
+        $foldergenerator = $this->getDataGenerator()->get_plugin_generator('mod_folder');
+        $folder = $foldergenerator->create_instance(['course' => $course->id, 'name' => 'testfolder']);
+        $context = context_module::instance($folder->cmid);
+        $fs = get_file_storage();
+        $filerecord = ['component' => 'mod_folder', 'filearea' => 'content', 'contextid' => $context->id, 'itemid' => 0,
+                'filepath' => '/'];
+        $filerecord['filename'] = 'testfile.txt';
+        $file1 = $fs->create_file_from_string($filerecord, $testcontent);
+        $filerecord['filename'] = 'testpdf.pdf';
+        $file2 = $fs->create_file_from_string($filerecord,
+                file_get_contents($CFG->dirroot . '/question/bank/questiongen/tests/fixtures/testpdf.pdf'));
+        $filerecord['filename'] = 'testimage.png';
+        $file3 = $fs->create_file_from_string($filerecord, file_get_contents($CFG->dirroot . '/pix/s/approve.png'));
+
+        $this->assertEquals($testcontent . "\n\n" . 'Extracted PDF or image content' . "\n\n" . 'Extracted PDF or image content',
+                $questiongenerator->extract_content_from_cm(get_fast_modinfo($course)->get_cm($folder->cmid)));
+        $file1->delete();
+        $file2->delete();
+        $file3->delete();
+
+        // Test mod_lesson.
+        $testcontent1 = 'Very interesting content in a lesson, page 1';
+        $testcontent2 = 'Very interesting content in a lesson, page 2';
+        $lessongenerator = $this->getDataGenerator()->get_plugin_generator('mod_lesson');
+        $lesson = $lessongenerator->create_instance(['course' => $course->id, 'name' => 'testlesson']);
+        $contentrecord1 = [
+                'contents_editor' => [
+                        'text' => $testcontent1,
+                        'format' => FORMAT_MOODLE,
+                        'itemid' => 0,
+                ],
+        ];
+        $contentrecord2 = [
+                'contents_editor' => [
+                        'text' => $testcontent2,
+                        'format' => FORMAT_MOODLE,
+                        'itemid' => 0,
+                ],
+        ];
+        $lessongenerator->create_content($lesson, $contentrecord1);
+        $lessongenerator->create_content($lesson, $contentrecord2);
+        $content = $questiongenerator->extract_content_from_cm(get_fast_modinfo($course)->get_cm($lesson->cmid));
+        $this->assertEquals($testcontent2 . "\n\n" . $testcontent1, $content);
+
+        // Test mod_book.
+        $testtitle1 = 'Chapter 1 title';
+        $testtitle2 = 'Chapter 2 title';
+        $testcontent1 = 'Very interesting content in a book, chapter 1';
+        $testcontent2 = 'Very interesting content in a book, chapter 2';
+        $bookgenerator = $this->getDataGenerator()->get_plugin_generator('mod_book');
+        $book = $bookgenerator->create_instance(['course' => $course->id, 'name' => 'testbook']);
+        $contentrecord1 = ['title' => $testtitle1, 'content' => $testcontent1];
+        $contentrecord2 = ['title' => $testtitle2, 'content' => $testcontent2];
+        $bookgenerator->create_content($book, $contentrecord1);
+        $bookgenerator->create_content($book, $contentrecord2);
+        $content = $questiongenerator->extract_content_from_cm(get_fast_modinfo($course)->get_cm($book->cmid));
+        $this->assertEquals($testtitle2 . "\n" . $testcontent2 . "\n\n" . $testtitle1 . "\n" . $testcontent1, $content);
     }
 
     /**
-     * Tests the formatting of the extact cm content.
+     * Tests the formatting of the extract cm content.
      *
      * @param string $content the content to format
      * @param string $expected the expected formatted content
@@ -216,6 +281,7 @@ final class question_generator_test extends \advanced_testcase {
 
     /**
      * Data provider for test_format_extracted_cm_content test function
+     *
      * @return array[] array of test cases
      */
     public static function format_extracted_cm_content_provider(): array {
@@ -234,7 +300,7 @@ final class question_generator_test extends \advanced_testcase {
                 ],
                 'general_removal_of_tags' => [
                         'content' => '<style>p { color: red; }</style>test <b>text</b> with <span>tags</span>',
-                        // The word "text" is emphasized.
+                    // The word "text" is emphasized.
                         'expected' => 'test TEXT with tags',
                 ],
                 'trailingwhitespaces' => [
@@ -244,4 +310,39 @@ final class question_generator_test extends \advanced_testcase {
         ];
     }
 
+    /**
+     * Tests the extraction of content from pdf or image with an external AI system.
+     *
+     * @covers \qbank_questiongen\local\question_generator::extract_content_from_pdf_or_image
+     */
+    public function test_extract_content_from_pdf_or_image(): void {
+        global $CFG, $DB;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        $qbankcminfo = question_bank_helper::create_default_open_instance($course, 'testquestionbank');
+        $fs = get_file_storage();
+        // That's just a fake file record for testing purposes. We just need a stored_file.
+        $filerecord = ['component' => 'qbank_questiongen', 'filearea' => 'test', 'contextid' => $qbankcminfo->context->id,
+                'itemid' => 0, 'filepath' => '/', 'filename' => 'testpdf.pdf'];
+        $file = $fs->create_file_from_string($filerecord,
+                file_get_contents($CFG->dirroot . '/question/bank/questiongen/tests/fixtures/testpdf.pdf'));
+        $questiongenerator = $this->getMockBuilder(question_generator::class)
+            ->setConstructorArgs([$qbankcminfo->context->id])
+            ->onlyMethods(['retrieve_file_content_from_ai_system', 'is_mimetype_supported_by_ai_system'])->getMock();
+        $questiongenerator->method('retrieve_file_content_from_ai_system')
+            // Only return 'content from file' once.
+            ->willReturnOnConsecutiveCalls('content from file', '');
+        // We have to fake the check if the external AI system supports the mimetype of the file we want to extract content from.
+        $questiongenerator->method('is_mimetype_supported_by_ai_system')->willReturn(true);
+
+        // TODO Test with PDF conversion support first.
+
+        $this->assertEquals('content from file', $questiongenerator->extract_content_from_pdf_or_image($file));
+        $cachedrecord = $DB->get_record('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()]);
+        $this->assertEquals('content from file', $cachedrecord->extractedcontent);
+        // The mock method only returns the content ONCE.
+        // If we call it a second time and if we receive the same result, that means that the caching mechanism works.
+        $this->assertEquals('content from file', $questiongenerator->extract_content_from_pdf_or_image($file));
+    }
 }

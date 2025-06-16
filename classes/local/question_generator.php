@@ -246,37 +246,44 @@ class question_generator {
                     }
                 }
                 break;
+            case 'folder':
+                $context = \context_module::instance($cm->id);
+                $fs = get_file_storage();
+                $files = $fs->get_area_files($context->id, 'mod_folder', 'content', 0, 'id ASC', false);
+                $filecontents = [];
+                foreach ($files as $file) {
+                    if (!empty($file) && in_array($file->get_mimetype(), self::get_supported_mimetypes())) {
+                        if (in_array($file->get_mimetype(), self::ITT_MIMETYPES)) {
+                            $filecontents[] = trim($this->extract_content_from_pdf_or_image($file));
+                        } else {
+                            $filecontents[] = trim($file->get_content());
+                        }
+                    }
+                }
+                // Will later be converted to proper line breaks.
+                $content = implode("<br/><br/>", $filecontents);
+                break;
             case 'lesson':
                 require_once($CFG->dirroot . '/mod/lesson/locallib.php');
                 $lesson = lesson::load($instance->id);
                 $pages = $lesson->load_all_pages();
+                $pagescontents = [];
                 foreach ($pages as $page) {
-                    // We must not use $page->get_contents() here because it requires to have the $PAGE object set up properly for
+                    // We must not use $page->get_contents() here because it requires having the $PAGE object set up properly for
                     // the lesson course module which we do not have.
-                    $content .= $page->properties()->contents;
+                    $pagescontents[] = trim($page->properties()->contents);
                 }
+                $content = implode("<br/><br/>", $pagescontents);
                 break;
             case 'book':
                 require_once($CFG->dirroot . '/mod/book/locallib.php');
                 $book = $DB->get_record('book', ['id' => $instance->id]);
                 $chapters = book_preload_chapters($book);
+                $chaptercontents = [];
                 foreach ($chapters as $chapter) {
-                    $content .= $chapter->title . "\n" . $chapter->content . "\n\n";
+                    $chaptercontents[] = $chapter->title . "<br/>" . $chapter->content;
                 }
-                break;
-            case 'folder':
-                $context = \context_module::instance($cm->id);
-                $fs = get_file_storage();
-                $files = $fs->get_area_files($context->id, 'mod_folder', 'content', 0, 'id ASC', false);
-                foreach ($files as $file) {
-                    if (!empty($file) && in_array($file->get_mimetype(), self::get_supported_mimetypes())) {
-                        if (in_array($file->get_mimetype(), self::ITT_MIMETYPES)) {
-                            $content = $this->extract_content_from_pdf_or_image($file);
-                        } else {
-                            $content = $file->get_content();
-                        }
-                    }
-                }
+                $content = implode("<br/><br/>", $chaptercontents);
                 break;
             default:
                 throw new \coding_exception('Unsupported course module/course module type - cmid: ' . $cm->id . ', ' .
@@ -301,31 +308,13 @@ class question_generator {
             $DB->update_record('qbank_questiongen_resource_cache', $record);
             return $record->extractedcontent;
         }
-        $imageprompt =
-                'Return the text that is written on the image/document. Do not wrap any explanatory text around. '
-                . 'Return only the bare content.';
-        // TODO Proper handling of disabled purpose, not configured purpose by tenant manager.
-        $purposeoptions = ai_manager_utils::get_available_purpose_options('itt');
-        if (empty($purposeoptions)) {
-            throw new questiongen_exception('errorimagetotextnotavailable', 'qbank_questiongen');
-        }
+
         // For example 'application/pdf' is not supported by some AI systems.
-        if (in_array($file->get_mimetype(), $purposeoptions['allowedmimetypes'])) {
-            $requestoptions = [
-                    'image' => 'data:' . $file->get_mimetype() . ';base64,' . base64_encode($file->get_content()),
-            ];
-            $aimanager = new manager('itt');
-            $result = $aimanager->perform_request($imageprompt, 'qbank_questiongen', $this->contextid,
-                    $requestoptions);
-            if ($result->get_code() !== 200) {
-                $errormessage = $result->get_errormessage();
-                if (debugging()) {
-                    $errormessage .= ' Debugging info: ' . $result->get_debuginfo();
-                }
-                throw new \moodle_exception('Could not extract from PDF. Error: ' . $errormessage);
-            }
-            $this->store_to_record_cache($file, $result->get_content());;
-            return $result->get_content();
+        if ($this->is_mimetype_supported_by_ai_system($file->get_mimetype())) {
+            $encodedimage = 'data:' . $file->get_mimetype() . ';base64,' . base64_encode($file->get_content());
+            $result = $this->retrieve_file_content_from_ai_system($encodedimage);
+            $this->store_to_record_cache($file, $result);
+            return $result;
         }
 
         if ($file->get_mimetype() !== 'application/pdf') {
@@ -353,21 +342,8 @@ class question_generator {
         foreach ($images as $image) {
             $imagecontent = file_get_contents($tmpdir . '/' . $image);
             // TODO Proper handling of disabled purpose, not configured purpose by tenant manager.
-            $aimanager = new manager('itt');
-            $requestoptions = [
-                    'image' => 'data:' . mime_content_type($tmpdir . '/' . $image) . ';base64,' .
-                            base64_encode($imagecontent),
-            ];
-            $result = $aimanager->perform_request($imageprompt, 'qbank_questiongen', $this->contextid,
-                    $requestoptions);
-            if ($result->get_code() !== 200) {
-                $errormessage = $result->get_errormessage();
-                if (debugging()) {
-                    $errormessage .= ' Debugging info: ' . $result->get_debuginfo();
-                }
-                throw new \moodle_exception('Could not extract from PDF. Error: ' . $errormessage);
-            }
-            $content .= $result->get_content();
+            $encodedimage = 'data:' . mime_content_type($tmpdir . '/' . $image) . ';base64,' . base64_encode($imagecontent);
+            $content .= $this->retrieve_file_content_from_ai_system($encodedimage);
         }
         $this->store_to_record_cache($file, $content);
         return $content;
@@ -448,5 +424,46 @@ class question_generator {
             $result['errormessage'] = $result->get_errormessage();
         }
         return $return;
+    }
+
+    /**
+     * Wrapper for the call of an external AI system to extract content from a file.
+     *
+     * @param string $encodedimage The base64 encoded image to send to the external AI system
+     */
+    public function retrieve_file_content_from_ai_system(string $encodedimage): string {
+        $imageprompt =
+                'Return the text that is written on the image/document. Do not wrap any explanatory text around. '
+                . 'Return only the bare content.';
+        $aimanager = new manager('itt');
+        $requestoptions = [
+                'image' => $encodedimage,
+        ];
+
+        $result = $aimanager->perform_request($imageprompt, 'qbank_questiongen', $this->contextid, $requestoptions);
+        if ($result->get_code() !== 200) {
+            $errormessage = $result->get_errormessage();
+            if (debugging()) {
+                $errormessage .= ' Debugging info: ' . $result->get_debuginfo();
+            }
+            throw new \moodle_exception('Could not extract from PDF. Error: ' . $errormessage);
+        }
+        return $result->get_content();
+    }
+
+    /**
+     * Returns if the used external AI system supports the mimetype of a file to extract content from.
+     *
+     * @param string $mimetype The mimetype of the file we want to extract content from with the external AI system
+     * @return bool true if the mimetype is supported, false otherwise
+     * @throws questiongen_exception if the connector to the AI system is not properly set up
+     */
+    public function is_mimetype_supported_by_ai_system(string $mimetype): bool {
+        // TODO Proper handling of disabled purpose, not configured purpose by tenant manager.
+        $purposeoptions = ai_manager_utils::get_available_purpose_options('itt');
+        if (empty($purposeoptions)) {
+            throw new questiongen_exception('errorimagetotextnotavailable', 'qbank_questiongen');
+        }
+        return in_array($mimetype, $purposeoptions['allowedmimetypes']);
     }
 }
