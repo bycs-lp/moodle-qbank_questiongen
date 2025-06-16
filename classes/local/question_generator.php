@@ -315,38 +315,21 @@ class question_generator {
             $result = $this->retrieve_file_content_from_ai_system($encodedimage);
             $this->store_to_record_cache($file, $result);
             return $result;
-        }
+        } else if ($file->get_mimetype() === 'application/pdf') {
+            // Depending on what models/AI tools are configured, some of them do not support sending PDF files directly. So we have to
+            // convert each PDF page to an image and extract the text from the images one by one.
+            $content = '';
 
-        if ($file->get_mimetype() !== 'application/pdf') {
+            $encodedimages = $this->convert_pdf_to_images($file);
+            foreach ($encodedimages as $encodedimage) {
+                $content .= $this->retrieve_file_content_from_ai_system($encodedimage);
+            }
+            $this->store_to_record_cache($file, $content);
+            return $content;
+        } else {
             // Not perfect to throw an exception here. We probably need some image format conversion here.
             throw new \moodle_exception('Unsupported file type: ' . $file->get_mimetype());
         }
-
-        // Depending on what models/AI tools are configured, some of them do not support sending PDF files directly. So we have to
-        // convert each PDF page to an image and extract the text from the images one by one.
-        $content = '';
-
-        $tmpdir = \make_request_directory();
-        $fileextension = explode('/', $file->get_mimetype())[1];
-        $tmpfilename = 'qbank_questiongen_tmp_' . uniqid() . '.' . $fileextension;
-        file_put_contents($tmpdir . '/' . $tmpfilename, $file->get_content());
-        $pdf = new pdf();
-        $pdf->set_image_folder($tmpdir);
-        try {
-            $pdf->set_pdf($tmpdir . '/' . $tmpfilename);
-            $images = $pdf->get_images();
-        } catch (PdfParserException $exception) {
-            throw new \qbank_questiongen\local\questiongen_exception('errorpdfnotsupported', 'qbank_questiongen', '',
-                    $file->get_filename());
-        }
-        foreach ($images as $image) {
-            $imagecontent = file_get_contents($tmpdir . '/' . $image);
-            // TODO Proper handling of disabled purpose, not configured purpose by tenant manager.
-            $encodedimage = 'data:' . mime_content_type($tmpdir . '/' . $image) . ';base64,' . base64_encode($imagecontent);
-            $content .= $this->retrieve_file_content_from_ai_system($encodedimage);
-        }
-        $this->store_to_record_cache($file, $content);
-        return $content;
     }
 
     /**
@@ -465,5 +448,34 @@ class question_generator {
             throw new questiongen_exception('errorimagetotextnotavailable', 'qbank_questiongen');
         }
         return in_array($mimetype, $purposeoptions['allowedmimetypes']);
+    }
+
+    /**
+     * Converts a PDF into an array of images.
+     *
+     * @param \stored_file $file the PDF file to convert to images
+     * @return array array of base64 encoded images, one for each page of the PDF
+     * @throws questiongen_exception if the PDF is not supported by the library we're using
+     */
+    public function convert_pdf_to_images(\stored_file $file): array {
+        $tmpdir = \make_request_directory();
+        $fileextension = explode('/', $file->get_mimetype())[1];
+        $tmpfilename = 'qbank_questiongen_tmp_' . uniqid() . '.' . $fileextension;
+        file_put_contents($tmpdir . '/' . $tmpfilename, $file->get_content());
+        $pdf = new pdf();
+        $pdf->set_image_folder($tmpdir);
+        try {
+            $pdf->set_pdf($tmpdir . '/' . $tmpfilename);
+            $images = $pdf->get_images();
+        } catch (PdfParserException $exception) {
+            throw new \qbank_questiongen\local\questiongen_exception('errorpdfnotsupported', 'qbank_questiongen', '',
+                    $file->get_filename());
+        }
+        $imagearray = [];
+        foreach ($images as $image) {
+            $imagecontent = file_get_contents($tmpdir . '/' . $image);
+            $imagearray[] = 'data:' . mime_content_type($tmpdir . '/' . $image) . ';base64,' . base64_encode($imagecontent);
+        }
+        return $imagearray;
     }
 }

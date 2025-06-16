@@ -42,7 +42,6 @@ class xml_importer {
             stdClass $llmresponse,
             bool $addidentifier,
     ): bool {
-
         global $CFG, $DB;
 
         // Eventually add a prefix to the question title. We have to do this in the XML before importing.

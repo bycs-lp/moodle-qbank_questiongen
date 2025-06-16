@@ -311,9 +311,10 @@ final class question_generator_test extends \advanced_testcase {
     }
 
     /**
-     * Tests the extraction of content from pdf or image with an external AI system.
+     * Tests the extraction of content from PDF or image with an external AI system.
      *
      * @covers \qbank_questiongen\local\question_generator::extract_content_from_pdf_or_image
+     * @covers \qbank_questiongen\local\question_generator::convert_pdf_to_images
      */
     public function test_extract_content_from_pdf_or_image(): void {
         global $CFG, $DB;
@@ -334,9 +335,8 @@ final class question_generator_test extends \advanced_testcase {
             // Only return 'content from file' once.
             ->willReturnOnConsecutiveCalls('content from file', '');
         // We have to fake the check if the external AI system supports the mimetype of the file we want to extract content from.
-        $questiongenerator->method('is_mimetype_supported_by_ai_system')->willReturn(true);
-
-        // TODO Test with PDF conversion support first.
+        $questiongenerator->method('is_mimetype_supported_by_ai_system')->with('application/pdf')
+            ->willReturn(true);
 
         $this->assertEquals('content from file', $questiongenerator->extract_content_from_pdf_or_image($file));
         $cachedrecord = $DB->get_record('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()]);
@@ -344,5 +344,23 @@ final class question_generator_test extends \advanced_testcase {
         // The mock method only returns the content ONCE.
         // If we call it a second time and if we receive the same result, that means that the caching mechanism works.
         $this->assertEquals('content from file', $questiongenerator->extract_content_from_pdf_or_image($file));
+        // Empty the cache for next test.
+        $DB->delete_records('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()]);
+        $this->assertEmpty($DB->get_records('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()]));
+
+        $questiongenerator = $this->getMockBuilder(question_generator::class)
+            ->setConstructorArgs([$qbankcminfo->context->id])
+            ->onlyMethods(['retrieve_file_content_from_ai_system', 'is_mimetype_supported_by_ai_system'])->getMock();
+        $questiongenerator->method('retrieve_file_content_from_ai_system')
+            // Only return 'content from file' once.
+            ->willReturnOnConsecutiveCalls('content from file', '');
+        // We have to fake the check if the external AI system supports the mimetype of the file we want to extract content from.
+        // This time we simulate an external AI system that does not support PDF.
+        // This will make the PDF being converted into images. So we're also testing the method convert_pdf_to_images here.
+        $questiongenerator->method('is_mimetype_supported_by_ai_system')->with('application/pdf')
+            ->willReturn(false);
+        $this->assertEquals('content from file', $questiongenerator->extract_content_from_pdf_or_image($file));
+        $cachedrecord = $DB->get_record('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()]);
+        $this->assertEquals('content from file', $cachedrecord->extractedcontent);
     }
 }
