@@ -316,8 +316,8 @@ class question_generator {
             $this->store_to_record_cache($file, $result);
             return $result;
         } else if ($file->get_mimetype() === 'application/pdf') {
-            // Depending on what models/AI tools are configured, some of them do not support sending PDF files directly. So we have to
-            // convert each PDF page to an image and extract the text from the images one by one.
+            // Depending on what models/AI tools are configured, some of them do not support sending PDF files directly.
+            // So we have to convert each PDF page to an image and extract the text from the images one by one.
             $content = '';
 
             $encodedimages = $this->convert_pdf_to_images($file);
