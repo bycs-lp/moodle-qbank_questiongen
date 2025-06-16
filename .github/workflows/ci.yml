@@ -50,6 +50,10 @@ jobs:
           # If you try to use code coverage with "none", it will fallback to phpdbg (which has known problems).
           coverage: none
 
+      # We need ghostscript for the unit tests that convert PDF into images
+      - name: Install Ghostscript
+        run: sudo apt-get update && sudo apt-get install -y ghostscript
+
       - name: Initialise moodle-plugin-ci
         run: |
           composer create-project -n --no-dev --prefer-dist moodlehq/moodle-plugin-ci ci ^4
