@@ -191,7 +191,7 @@ class question_generator {
      * @return bool true if extracting content from the course module is supported, false otherwise
      */
     public static function is_cm_supported(cm_info $cm): bool {
-        if (in_array($cm->modname, ['page, label', 'lesson', 'book', 'folder'])) {
+        if (in_array($cm->modname, ['page', 'label', 'lesson', 'book', 'folder'])) {
             return true;
         }
         if ($cm->modname === 'resource') {
