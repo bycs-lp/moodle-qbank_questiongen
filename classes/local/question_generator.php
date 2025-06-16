@@ -23,6 +23,7 @@ use local_ai_manager\ai_manager_utils;
 use local_ai_manager\manager;
 use qbank_questiongen\form\story_form;
 use question_bank;
+use setasign\Fpdi\PdfParser\PdfParserException;
 use stdClass;
 
 /**
@@ -81,7 +82,7 @@ class question_generator {
                     ],
                     [
                             'sender' => 'system',
-                            'message' => $instructions
+                            'message' => $instructions,
                     ],
                     [
                             'sender' => 'system',
@@ -282,7 +283,7 @@ class question_generator {
                         $cm->modname);
         }
 
-        return $this->format_extracted_cm_content($content);
+        return empty($content) ? '' : self::format_extracted_cm_content($content);
     }
 
     /**
@@ -342,8 +343,13 @@ class question_generator {
         file_put_contents($tmpdir . '/' . $tmpfilename, $file->get_content());
         $pdf = new pdf();
         $pdf->set_image_folder($tmpdir);
-        $pdf->set_pdf($tmpdir . '/' . $tmpfilename);
-        $images = $pdf->get_images();
+        try {
+            $pdf->set_pdf($tmpdir . '/' . $tmpfilename);
+            $images = $pdf->get_images();
+        } catch (PdfParserException $exception) {
+            throw new \qbank_questiongen\local\questiongen_exception('errorpdfnotsupported', 'qbank_questiongen', '',
+                    $file->get_filename());
+        }
         foreach ($images as $image) {
             $imagecontent = file_get_contents($tmpdir . '/' . $image);
             $aimanager = new manager('itt');
@@ -405,19 +411,14 @@ class question_generator {
      * @param string $content the content to format
      * @return string the formatted content
      */
-    public function format_extracted_cm_content(string $content): string {
-        // We convert paragraphs to line breaks.
-        $pattern = '/<p(.*?)>((.*?)+)<\/p>/';
-        $replacement = '${2}<br/>';
-        $content = preg_replace($pattern, $replacement, $content);
-        // Then convert all HTML line breaks into text line breaks.
-        $content = str_replace('<br/>', "\n", $content);
-        $content = str_replace('<br>', "\n", $content);
-        return strip_tags($content);
+    public static function format_extracted_cm_content(string $content): string {
+        $content = trim($content);
+        return html_to_text($content, 0, false);
     }
 
     /**
      * Helper function to retrieve the generated question XML from the external LLM.
+     *
      * @param array $messages a standardized messages array containing the "conversation" with the LLM
      * @return string[] array with keys 'generatedquestionxml' and 'errormessage'. If 'errormessage' is empty retrieving
      *  was successful, otherwise it contains an error message.

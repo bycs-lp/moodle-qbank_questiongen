@@ -53,6 +53,7 @@ class generate_questions extends \core\task\adhoc_task {
             if (property_exists($customdata, 'courseactivities') && !empty($customdata->courseactivities)) {
                 $questiongenerator = new question_generator($customdata->contextid);
                 $story = $questiongenerator->create_story_from_cms($customdata->courseactivities);
+
                 foreach ($questiongenrecords as $dbrecord) {
                     $dbrecord->story = $story;
                     $DB->update_record('qbank_questiongen', $dbrecord);
@@ -142,7 +143,13 @@ class generate_questions extends \core\task\adhoc_task {
             }
 
         } catch (\Exception $exception) {
-            set_debugging(DEBUG_DEVELOPER, true);;
+            set_debugging(DEBUG_DEVELOPER, true);
+            $usererrormessage = get_string('errorcreatingquestionscritical', 'qbank_questiongen');
+            if ($exception instanceof \qbank_questiongen\local\questiongen_exception) {
+                // If we have a questiongen_exception, we overwrite the user-faced message with the one of
+                // the questiongen_exception.
+                $usererrormessage = $exception->getMessage();
+            }
             mtrace('Exception thrown during task. Task will not be requeued. This is just for debugging purposes.');
             mtrace('Exception message: ' . $exception->getMessage());
             mtrace('Exception stack trace:');
@@ -152,7 +159,7 @@ class generate_questions extends \core\task\adhoc_task {
                 // has occurred is visible.
                 $this->progress->update_full(10, '');
             }
-            $this->progress->error(get_string('errorcreatingquestionscritical', 'qbank_questiongen'));
+            $this->progress->error($usererrormessage);
         }
     }
 

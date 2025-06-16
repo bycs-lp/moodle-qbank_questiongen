@@ -28,53 +28,17 @@ defined('MOODLE_INTERNAL') || die();
 if ($hassiteconfig) {
     $settings = new admin_settingpage('qbank_questiongen_settings', new lang_string('pluginname', 'qbank_questiongen'));
 
-    // Language model provider.
     $provideroptions = [
-            'OpenAI' => 'OpenAI',
-            'Azure' => 'Azure',
             'local_ai_manager' => 'Plugin "AI Manager"',
     ];
     $settings->add(new admin_setting_configselect(
             'qbank_questiongen/provider',
             get_string('provider', 'qbank_questiongen'),
             get_string('providerdesc', 'qbank_questiongen'),
-            'OpenAI',
-            $provideroptions,
+            'local_ai_manager',
+            $provideroptions
     ));
-
-    // Azure endpoint.
-
-    $settings->add(new admin_setting_configtext(
-            'qbank_questiongen/azure_api_endpoint',
-            get_string('azureapiendpoint', 'qbank_questiongen'),
-            get_string('azureapiendpointdesc', 'qbank_questiongen'),
-            '',
-            PARAM_URL
-    ));
-
-    // OpenAI key.
-    $settings->add(new admin_setting_configpasswordunmask(
-            'qbank_questiongen/key',
-            get_string('openaikey', 'qbank_questiongen'),
-            get_string('openaikeydesc', 'qbank_questiongen'),
-            '',
-            PARAM_TEXT,
-            50
-    ));
-
-    // Model.
-    $options = [
-            'gpt-3.5-turbo' => 'gpt-3.5-turbo',
-            'gpt-4' => 'gpt-4',
-            'gpt-4o' => 'gpt-4o',
-    ];
-    $settings->add(new admin_setting_configselect(
-            'qbank_questiongen/model',
-            get_string('model', 'qbank_questiongen'),
-            get_string('openaikeydesc', 'qbank_questiongen'),
-            'gpt-3.5-turbo',
-            $options,
-    ));
+    // TODO Implement other backends.
 
     // Number of tries.
     $settings->add(new admin_setting_configtext(
