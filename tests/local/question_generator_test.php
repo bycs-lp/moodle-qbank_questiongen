@@ -234,7 +234,7 @@ final class question_generator_test extends \advanced_testcase {
                 ],
                 'general_removal_of_tags' => [
                         'content' => '<style>p { color: red; }</style>test <b>text</b> with <span>tags</span>',
-                        // The word "text" is emphasized
+                        // The word "text" is emphasized.
                         'expected' => 'test TEXT with tags',
                 ],
                 'trailingwhitespaces' => [
