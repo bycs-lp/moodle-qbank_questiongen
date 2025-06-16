@@ -64,6 +64,7 @@ $string['errorcoursecontentsempty'] = 'The content of the selected activities is
 $string['errorcreatingquestions'] = 'An error occurred while creating the questions: {$a->failed} out of {$a->total} failed.';
 $string['errorcreatingquestionscritical'] = 'An error occurred while creating the questions. Please retry to generate the questions.';
 $string['errorformfieldempty'] = 'Field must not be empty';
+$string['errorimagetotextnotavailable'] = 'AI based image to text conversion is not available. You cannot use PDF or images as content.';
 $string['errornoactivitiesselected'] = 'If you want to use content from the course to generate questions from you have to select at least one activity';
 $string['errornogenerateentriesfound'] = 'No entries for generating questions could be found.';
 $string['errornotcreated'] = 'Error: questions were not created';

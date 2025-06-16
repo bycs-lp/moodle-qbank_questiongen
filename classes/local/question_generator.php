@@ -304,10 +304,10 @@ class question_generator {
         $imageprompt =
                 'Return the text that is written on the image/document. Do not wrap any explanatory text around. '
                 . 'Return only the bare content.';
+        // TODO Proper handling of disabled purpose, not configured purpose by tenant manager.
         $purposeoptions = ai_manager_utils::get_available_purpose_options('itt');
         if (empty($purposeoptions)) {
-            debugging('Image to text function is not available', DEBUG_DEVELOPER);
-            return '';
+            throw new questiongen_exception('errorimagetotextnotavailable', 'qbank_questiongen');
         }
         // For example 'application/pdf' is not supported by some AI systems.
         if (in_array($file->get_mimetype(), $purposeoptions['allowedmimetypes'])) {
@@ -352,6 +352,7 @@ class question_generator {
         }
         foreach ($images as $image) {
             $imagecontent = file_get_contents($tmpdir . '/' . $image);
+            // TODO Proper handling of disabled purpose, not configured purpose by tenant manager.
             $aimanager = new manager('itt');
             $requestoptions = [
                     'image' => 'data:' . mime_content_type($tmpdir . '/' . $image) . ';base64,' .

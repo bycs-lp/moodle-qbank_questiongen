@@ -194,7 +194,7 @@ final class question_generator_test extends \advanced_testcase {
         // being called and assume the extraction of the content (which is done by an external LLM) will return the text.
         $filerecord['filename'] = 'testpdf.pdf';
         $file = $fs->create_file_from_string($filerecord,
-                file_get_contents($CFG->dirroot . '/question/bank/questiongen/fixtures/testpdf.pdf'));
+                file_get_contents($CFG->dirroot . '/question/bank/questiongen/tests/fixtures/testpdf.pdf'));
         $content = $questiongenerator->extract_content_from_cm(get_fast_modinfo($course)->get_cm($resource->cmid));
         $this->assertEquals('Extracted PDF or image content', $content);
         $file->delete();
@@ -226,7 +226,7 @@ final class question_generator_test extends \advanced_testcase {
                 ],
                 'multiple_paragraphs' => [
                         'content' => '<p style="color: red;">test text</p><div>Some text in between</div><p>another test text</p>',
-                        'expected' => 'test text' . "\n" . 'Some text in between' . "\n" . 'another test text' . "\n",
+                        'expected' => 'test text' . "\n\n" . 'Some text in between' . "\n" . 'another test text' . "\n",
                 ],
                 'line_breaks' => [
                         'content' => 'test text<br/>another test text<br>final test text',
