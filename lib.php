@@ -75,7 +75,7 @@ function qbank_questiongen_extend_settings_navigation($settingsnav, $context) {
 function qbank_questiongen_after_file_deleted(stdClass $file): void {
     global $DB;
     // If there is still another file that has the identical contenthash we keep our cached contents.
-    if ($DB->record_exists('qbank_questiongen_resource_cache', ['contenthash' => $file->contenthash])) {
+    if ($DB->record_exists('files', ['contenthash' => $file->contenthash])) {
         return;
     }
     $DB->delete_records('qbank_questiongen_resource_cache', ['contenthash' => $file->contenthash]);
