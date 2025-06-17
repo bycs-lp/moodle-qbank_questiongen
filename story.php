@@ -64,14 +64,6 @@ $PAGE->set_heading(get_string('pluginname', 'qbank_questiongen'));
 $PAGE->set_title(get_string('pluginname', 'qbank_questiongen'));
 $PAGE->set_pagelayout('standard');
 
-echo $OUTPUT->header();
-
-// Print horizontal nav if needed.
-$renderer = $PAGE->get_renderer('core_question', 'bank');
-
-$qbankaction = new \core_question\output\qbank_action_menu($thispageurl);
-echo $renderer->render($qbankaction);
-
 $mform = new \qbank_questiongen\form\story_form(null, ['contexts' => $contexts, 'cmid' => $cmid]);
 $provider = get_config('qbank_questiongen', 'provider');
 
@@ -138,12 +130,21 @@ if ($mform->is_cancelled()) {
             'cron' => $cronoverdue,
             'progressbar' => $adhoctaskprogressbar->get_content(),
     ];
+    echo $OUTPUT->header();
+    $renderer = $PAGE->get_renderer('core_question', 'bank');
+    $qbankaction = new \core_question\output\qbank_action_menu($thispageurl);
+    echo $renderer->render($qbankaction);
+
     // Load the ready template.
     echo $OUTPUT->render_from_template('qbank_questiongen/loading', $datafortemplate);
     if ($provider === 'local_ai_manager') {
         $PAGE->requires->js_call_amd('local_ai_manager/warningbox', 'renderWarningBox', ['#ai_manager_warningbox']);
     }
 } else {
+    echo $OUTPUT->header();
+    $renderer = $PAGE->get_renderer('core_question', 'bank');
+    $qbankaction = new \core_question\output\qbank_action_menu($thispageurl);
+    echo $renderer->render($qbankaction);
     echo $OUTPUT->render_from_template('qbank_questiongen/intro', []);
 
     if ($provider === 'local_ai_manager') {
