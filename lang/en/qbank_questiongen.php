@@ -42,8 +42,6 @@ $string['aiidentifiersetting'] = 'Question name prefix';
 $string['aiidentifiersettingdesc'] = 'Specify the prefix to be added to the question name when importing to the question bank. Leave it empty to disable the adding of a prefix. The prefix will be just put straight in front of the question name. If you want an additional delimiter (dash, colon, spaces etc.) make sure you add it to the prefix.';
 $string['aiidentifiertagsetting'] = 'Question tag';
 $string['aiidentifiertagsettingdesc'] = 'Specify the name of the tag that should be added to the question when importing to the question bank. Leave it empty to disable the adding of a tag.';
-$string['azureapiendpoint'] = 'Azure API Endpoint';
-$string['azureapiendpointdesc'] = 'Enter the Azure API endpoint URL here';
 $string['backtocourse'] = 'Back to course';
 $string['category'] = 'Question category';
 $string['category_help'] = 'If the category selection is empty, open the question bank for this course once.';
@@ -53,7 +51,6 @@ $string['cleanuptask'] = 'Cleanup task for qbank_questiongen';
 $string['configurepreset'] = 'Configure preset';
 $string['createdquestionssuccess'] = 'Created questions successfully';
 $string['createdquestionsuccess'] = 'Created question successfully';
-$string['createdquestionwithid'] = 'Created question with id ';
 $string['cronoverdue'] = 'The cron task seems not to run,
 questions generation rely on AdHoc Tasks that are created by the cron task, please check your cron settings.
 See <a href="https://docs.moodle.org/en/Cron#Setting_up_cron_on_your_system">
@@ -79,8 +76,6 @@ $string['generate'] = 'Generate questions';
 $string['generatemore'] = 'Generate more questions';
 $string['generating'] = 'Generating your questions... (You can safely leave this page, and check later on the question bank)';
 $string['generationfailed'] = 'The question generation failed after {$a} tries';
-$string['generationtries'] = 'Number of tries sent to OpenAI: <b>{$a}</b>';
-$string['gift_format'] = 'GIFT format';
 $string['gotoquestionbank'] = 'Go to question bank';
 $string['instructions'] = 'Instructions';
 $string['instructions_help'] = 'The instructions tell the AI what to do.';
@@ -96,8 +91,6 @@ $string['mode_help'] = 'Select the mode. You can select between three modes:
 </ul>
 ';
 $string['modecoursecontents'] = 'Course contents';
-$string['model'] = 'Model';
-$string['model_desc'] = 'Language model to use. <a href="https://platform.openai.com/docs/models/">More info</a>.';
 $string['modestory'] = 'Provide content';
 $string['modetopic'] = 'Topic';
 $string['name'] = 'Preset name';
@@ -105,11 +98,6 @@ $string['numofquestions'] = 'Number of questions to generate';
 $string['numoftries'] = '<b>{$a}</b> tries';
 $string['numoftriesdesc'] = 'Number of retries that should be performed if generating and import of a question fails';
 $string['numoftriesset'] = 'Number of retries';
-$string['openaikey'] = 'OpenAI or Azure API key';
-$string['openaikeydesc'] = 'You can get an OpenAI API key from <a href="https://platform.openai.com/account/api-keys">https://platform.openai.com/account/api-keys</a><br>
-Select the "+ Create New Secret Key" button and copy the key to this field.<br>
-Note that you need to have an OpenAI account that includes billing settings to get an API key.';
-$string['outof'] = 'out of';
 $string['pluginname'] = 'AI questions generator';
 $string['pluginname_desc'] = 'This feature allows you to automatically generate questions from text and course content using a large language model.';
 $string['pluginname_help'] = 'Use this plugin from the course administration menu or the question bank.';
@@ -122,15 +110,13 @@ $string['presetinstructions'] = 'Preset instructions';
 $string['presetname'] = 'Preset name';
 $string['presetnamedesc'] = 'Name that will be shown to the user';
 $string['presetprimer'] = 'Preset primer';
-$string['presetprimerdefault1'] = 'You are a helpful teacher\'s assistant that creates multiple choice questions based on the topics given by the user.';
 $string['presets'] = 'Presets';
 $string['presetsaved'] = 'Preset has been saved';
-$string['preview'] = 'Preview question in new tab';
 $string['primer'] = 'Primer';
 $string['primer_help'] = 'The primer is the first information to be sent to the AI, priming it for its task.';
 $string['privacy:metadata'] = 'AI text to questions generator does not store any personal data.';
 $string['provider'] = 'LLM provider';
-$string['providerdesc'] = 'Select if you are using Azure of OpenAI';
+$string['providerdesc'] = 'Select the AI backend you want to use';
 $string['questiongen:manage'] = 'Manage questions presets';
 $string['questiongeneratingfinished'] = 'All {$a} question generations have been processed.';
 $string['questiongeneratingstatus'] = 'Question {$a->current} out of {$a->total} processed.';
@@ -141,6 +127,4 @@ $string['story_help'] = 'Provide the content the LLM should generate questions f
 $string['tasksuccess'] = 'The question generation task was successfully created';
 $string['topic'] = 'Topic';
 $string['topic_help'] = 'The topic of your questions. Describe the topic you want the LLM to generate questions for.';
-$string['use_coursecontents'] = 'Use course contents as topic instead';
 $string['waitingforadhoctaskstart'] = 'Waiting for background task to start';
-$string['xml_format'] = 'Moodle XML format';
