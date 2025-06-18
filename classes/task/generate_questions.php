@@ -59,7 +59,7 @@ class generate_questions extends \core\task\adhoc_task {
                     $DB->update_record('qbank_questiongen', $dbrecord);
                 }
                 if (empty(trim($story))) {
-                    $this->progress->update(10, 100, '');
+                    $this->progress->update_full(100, '');
                     $this->progress->error(get_string('errorcoursecontentsempty', 'qbank_questiongen'));
                     return;
                 }
@@ -90,7 +90,7 @@ class generate_questions extends \core\task\adhoc_task {
                         $update->datemodified = time();
                         $update->success = 0;
                         $DB->update_record('qbank_questiongen', $update);
-                        $this->progress->update(10, 100, '');
+                        $this->progress->update_full(100, '');
                         $this->progress->error($question);
                         return;
                     }
@@ -155,9 +155,9 @@ class generate_questions extends \core\task\adhoc_task {
             mtrace('Exception stack trace:');
             mtrace($exception->getTraceAsString());
             if ($this->progress->get_percent() === 0.0) {
-                // If no progress has been made yet, set it to a low number so at least a bit of a red bar signaling that an error
-                // has occurred is visible.
-                $this->progress->update_full(10, '');
+                // If no progress has been made yet, set it to 100% so it's clear that the process is done and the user can see the
+                // red color signaling an error.
+                $this->progress->update_full(100, '');
             }
             $this->progress->error($usererrormessage);
         }
