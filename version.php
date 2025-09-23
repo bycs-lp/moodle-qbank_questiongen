@@ -28,6 +28,7 @@ $plugin->component = 'qbank_questiongen';
 $plugin->release = '2.1';
 $plugin->version  = 2025071600;
 $plugin->requires = 2025041401;
+$plugin->supported = [500];
 $plugin->maturity = MATURITY_ALPHA;
 $plugin->dependencies = [
         'local_ai_manager' => 2025071600,
