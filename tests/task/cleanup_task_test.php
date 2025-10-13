@@ -29,7 +29,6 @@ use stdClass;
  * @covers    \local_ai_manager\local\observers
  */
 final class cleanup_task_test extends \advanced_testcase {
-
     /**
      * Tests the functionality of the cleanup task.
      *

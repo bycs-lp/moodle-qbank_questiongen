@@ -27,7 +27,6 @@ use core\task\adhoc_task;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class cleanup_task extends \core\task\scheduled_task {
-
     /** @var \core\clock $clock dependency injected clock object. */
     private \core\clock $clock;
 
@@ -47,8 +46,12 @@ class cleanup_task extends \core\task\scheduled_task {
     public function execute(): void {
         global $DB;
         $cleanupdelay = get_config('qbank_questiongen', 'cleanupdelay');
-        $idstocleanup = $DB->get_fieldset_select('qbank_questiongen', 'id', 'timemodified < ?',
-                [$this->clock->time() - $cleanupdelay]);
+        $idstocleanup = $DB->get_fieldset_select(
+            'qbank_questiongen',
+            'id',
+            'timemodified < ?',
+            [$this->clock->time() - $cleanupdelay]
+        );
 
         $chunks = array_chunk($idstocleanup, 100);
         $deleted = 0;

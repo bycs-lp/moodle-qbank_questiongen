@@ -30,8 +30,6 @@ require_once($CFG->libdir . '/formslib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class edit_preset_form extends \moodleform {
-
-
     #[\Override]
     public function definition() {
         $mform = &$this->_form;
@@ -56,7 +54,6 @@ class edit_preset_form extends \moodleform {
         $mform->setType('example', PARAM_RAW);
 
         $this->add_action_buttons();
-
     }
 
     #[\Override]

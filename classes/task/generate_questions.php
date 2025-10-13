@@ -27,7 +27,6 @@ use qbank_questiongen\local\question_generator;
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class generate_questions extends \core\task\adhoc_task {
-
     use \core\task\stored_progress_task_trait;
 
     #[\Override]
@@ -46,8 +45,15 @@ class generate_questions extends \core\task\adhoc_task {
                 throw new \moodle_exception('errornogenerateentriesfound', 'qbank_questiongen');
             }
             $questionstocreatecount = count($questiongenrecords);
-            $this->progress->update(0, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',
-                    ['current' => 0, 'total' => $questionstocreatecount]));
+            $this->progress->update(
+                0,
+                $questionstocreatecount,
+                get_string(
+                    'questiongeneratingstatus',
+                    'qbank_questiongen',
+                    ['current' => 0, 'total' => $questionstocreatecount]
+                )
+            );
 
             // Before creating questions we need to check, if we need to generate the story from the course content first.
             if (property_exists($customdata, 'courseactivities') && !empty($customdata->courseactivities)) {
@@ -101,9 +107,9 @@ class generate_questions extends \core\task\adhoc_task {
                     $DB->update_record('qbank_questiongen', $update);
 
                     $created = \qbank_questiongen\local\xml_importer::parse_questions(
-                            $dbrecord->category,
-                            $question,
-                            !empty($dbrecord->aiidentifier),
+                        $dbrecord->category,
+                        $question,
+                        !empty($dbrecord->aiidentifier),
                     );
 
                     // If questions were not created.
@@ -121,7 +127,6 @@ class generate_questions extends \core\task\adhoc_task {
                     if ($error != '') {
                         mtrace('[qbank_questiongen adhoc_task]' . $error);
                     }
-
                 }
 
                 // Write success state to DB.
@@ -129,19 +134,32 @@ class generate_questions extends \core\task\adhoc_task {
                 $update->id = $dbrecord->id;
                 $update->success = $created ? 1 : 0;
                 $DB->update_record('qbank_questiongen', $update);
-                $this->progress->update($i, $questionstocreatecount, get_string('questiongeneratingstatus', 'qbank_questiongen',
-                        ['current' => $i, 'total' => $questionstocreatecount]));
+                $this->progress->update(
+                    $i,
+                    $questionstocreatecount,
+                    get_string(
+                        'questiongeneratingstatus',
+                        'qbank_questiongen',
+                        ['current' => $i, 'total' => $questionstocreatecount]
+                    )
+                );
                 $i++;
             }
-            $this->progress->update_full(100,
-                    get_string('questiongeneratingfinished', 'qbank_questiongen', $questionstocreatecount));
+            $this->progress->update_full(
+                100,
+                get_string('questiongeneratingfinished', 'qbank_questiongen', $questionstocreatecount)
+            );
             $successstates = $DB->get_fieldset_select('qbank_questiongen', 'success', "id $insql", $inparams);
             $failedquestionscount = count(array_filter($successstates, fn($state) => intval($state) === 0));
             if ($failedquestionscount > 0) {
-                $this->progress->error(get_string('errorcreatingquestions', 'qbank_questiongen',
-                        ['failed' => $failedquestionscount, 'total' => $questionstocreatecount]));
+                $this->progress->error(
+                    get_string(
+                        'errorcreatingquestions',
+                        'qbank_questiongen',
+                        ['failed' => $failedquestionscount, 'total' => $questionstocreatecount]
+                    )
+                );
             }
-
         } catch (\Exception $exception) {
             set_debugging(DEBUG_DEVELOPER, true);
             $usererrormessage = get_string('errorcreatingquestionscritical', 'qbank_questiongen');

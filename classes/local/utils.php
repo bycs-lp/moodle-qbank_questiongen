@@ -29,7 +29,6 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class utils {
-
     /**
      * Stores the data from the story_form.php form in the qbank_questiongen table.
      *
