@@ -25,7 +25,6 @@ namespace qbank_questiongen\local;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class utils_test extends \advanced_testcase {
-
     /**
      * Tests the functionality that substitutes certain placeholders in a string.
      *

@@ -32,7 +32,7 @@ defined('MOODLE_INTERNAL') || die();
 core_question\local\bank\helper::require_plugin_enabled('qbank_questiongen');
 
 [$thispageurl, $contexts, $cmid, $cm, $module, $pagevars] =
-        question_edit_setup('import', '/question/bank/questiongen/story.php');
+    question_edit_setup('import', '/question/bank/questiongen/story.php');
 
 [$catid, $catcontext] = explode(',', $pagevars['cat']);
 if (!$qbankcategory = $DB->get_record('question_categories', ['id' => $catid])) {
@@ -59,19 +59,22 @@ if ($contexts === null) { // Need to get the course from the chosen category.
 $disablederrormessage = '';
 $provider = get_config('qbank_questiongen', 'provider');
 if ($provider === 'local_ai_manager') {
-
     $qbankcontext = \context_module::instance($cmid);
     $aiconfig = \local_ai_manager\ai_manager_utils::get_ai_config($USER, $qbankcontext->id, null, ['questiongeneration']);
-    if ($aiconfig['availability']['available'] === \local_ai_manager\ai_manager_utils::AVAILABILITY_HIDDEN
-            || $aiconfig['purposes'][0]['available'] === \local_ai_manager\ai_manager_utils::AVAILABILITY_HIDDEN) {
+    if (
+        $aiconfig['availability']['available'] === \local_ai_manager\ai_manager_utils::AVAILABILITY_HIDDEN
+        || $aiconfig['purposes'][0]['available'] === \local_ai_manager\ai_manager_utils::AVAILABILITY_HIDDEN
+    ) {
         throw new \core\exception\moodle_exception('errorquestiongenunavailable', 'qbank_questiongen');
     }
 
-    if ($aiconfig['availability']['available'] === \local_ai_manager\ai_manager_utils::AVAILABILITY_DISABLED
-            || $aiconfig['purposes'][0]['available'] === \local_ai_manager\ai_manager_utils::AVAILABILITY_DISABLED) {
+    if (
+        $aiconfig['availability']['available'] === \local_ai_manager\ai_manager_utils::AVAILABILITY_DISABLED
+        || $aiconfig['purposes'][0]['available'] === \local_ai_manager\ai_manager_utils::AVAILABILITY_DISABLED
+    ) {
         $disablederrormessage = !empty($aiconfig['availability']['errormessage'])
-                ? $aiconfig['availability']['errormessage']
-                : $aiconfig['purposes'][0]['errormessage'];
+            ? $aiconfig['availability']['errormessage']
+            : $aiconfig['purposes'][0]['errormessage'];
     }
 }
 
@@ -89,7 +92,6 @@ $provider = get_config('qbank_questiongen', 'provider');
 if ($mform->is_cancelled() && empty($disablederrormessage)) {
     redirect($CFG->wwwroot . '/question/edit.php?cmid=' . $cmid);
 } else if (($data = $mform->get_data()) && empty($disablederrormessage)) {
-
     // Call the adhoc task.
     // We need the courseid anyway so get it from cmid.
     $cm = get_coursemodule_from_id('', $cmid);
@@ -102,8 +104,8 @@ if ($mform->is_cancelled() && empty($disablederrormessage)) {
     $questiongenids = \qbank_questiongen\local\utils::store_questiongen_data($data);
 
     $customdata = [
-            'contextid' => \context_module::instance($cm->id)->id,
-            'sendexistingquestionsascontext' => !empty($data->sendexistingquestionsascontext),
+        'contextid' => \context_module::instance($cm->id)->id,
+        'sendexistingquestionsascontext' => !empty($data->sendexistingquestionsascontext),
     ];
 
     if (intval($data->mode) === story_form::QUESTIONGEN_MODE_COURSECONTENTS) {
@@ -125,15 +127,20 @@ if ($mform->is_cancelled() && empty($disablederrormessage)) {
     $task->set_custom_data($customdata);
     \core\task\manager::queue_adhoc_task($task);
     $currentadhoctasks = \core\task\manager::get_adhoc_tasks($task::class);
-    $adhoctask = array_values(array_filter($currentadhoctasks,
+    $adhoctask = array_values(
+        array_filter(
+            $currentadhoctasks,
             fn($currentadhoctask) => isset($currentadhoctask->get_custom_data()->uniqadhoctaskid) &&
-                    $currentadhoctask->get_custom_data()->uniqadhoctaskid === $uniqadhoctaskid))[0];
+                $currentadhoctask->get_custom_data()->uniqadhoctaskid === $uniqadhoctaskid
+        )
+    )[0];
     $adhoctask->initialise_stored_progress();
     $adhoctask->set_initial_progress();
 
-    $adhoctaskprogressidnumber =
-            \core\output\stored_progress_bar::convert_to_idnumber(\qbank_questiongen\task\generate_questions::class,
-                    $adhoctask->get_id());
+    $adhoctaskprogressidnumber = \core\output\stored_progress_bar::convert_to_idnumber(
+        \qbank_questiongen\task\generate_questions::class,
+        $adhoctask->get_id()
+    );
     $adhoctaskprogressbar = \core\output\stored_progress_bar::get_by_idnumber($adhoctaskprogressidnumber);
 
     // Check if the cron is overdue.
@@ -142,12 +149,12 @@ if ($mform->is_cancelled() && empty($disablederrormessage)) {
 
     // Prepare the data for the template.
     $datafortemplate = [
-            'wwwroot' => $CFG->wwwroot,
-            'userid' => $USER->id,
-            'courseid' => $courseid,
-            'cmid' => $cmid,
-            'cron' => $cronoverdue,
-            'progressbar' => $adhoctaskprogressbar->get_content(),
+        'wwwroot' => $CFG->wwwroot,
+        'userid' => $USER->id,
+        'courseid' => $courseid,
+        'cmid' => $cmid,
+        'cron' => $cronoverdue,
+        'progressbar' => $adhoctaskprogressbar->get_content(),
     ];
     echo $OUTPUT->header();
     $renderer = $PAGE->get_renderer('core_question', 'bank');
@@ -171,10 +178,16 @@ if ($mform->is_cancelled() && empty($disablederrormessage)) {
         echo $OUTPUT->render_from_template('qbank_questiongen/intro', []);
 
         if ($provider === 'local_ai_manager') {
-            $PAGE->requires->js_call_amd('local_ai_manager/infobox', 'renderInfoBox',
-                    ['qbank_questiongen', $USER->id, '#ai_manager_infobox', ['questiongeneration', 'itt']]);
-            $PAGE->requires->js_call_amd('local_ai_manager/userquota', 'renderUserQuota',
-                    ['#ai_manager_userquota', ['questiongeneration']]);
+            $PAGE->requires->js_call_amd(
+                'local_ai_manager/infobox',
+                'renderInfoBox',
+                ['qbank_questiongen', $USER->id, '#ai_manager_infobox', ['questiongeneration', 'itt']]
+            );
+            $PAGE->requires->js_call_amd(
+                'local_ai_manager/userquota',
+                'renderUserQuota',
+                ['#ai_manager_userquota', ['questiongeneration']]
+            );
         }
         $mform->display();
     }

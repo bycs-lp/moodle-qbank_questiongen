@@ -96,14 +96,17 @@ if ($preseteditform->is_cancelled()) {
     }
     echo $OUTPUT->header();
     echo html_writer::start_div('w-75 d-flex flex-column align-items-center ml-auto mr-auto');
-    echo $OUTPUT->render_from_template('qbank_questiongen/edit_preset_heading',
-            [
-                    'heading' => $OUTPUT->heading(get_string('configurepreset', 'qbank_questiongen')),
-                    'showdeletebutton' => !empty($id),
-                    'deleteurl' => new moodle_url('/question/bank/questiongen/edit_preset.php',
-                            ['id' => $id, 'del' => 1, 'sesskey' => sesskey()]),
-            ]);
-
+    echo $OUTPUT->render_from_template(
+        'qbank_questiongen/edit_preset_heading',
+        [
+            'heading' => $OUTPUT->heading(get_string('configurepreset', 'qbank_questiongen')),
+            'showdeletebutton' => !empty($id),
+            'deleteurl' => new moodle_url(
+                '/question/bank/questiongen/edit_preset.php',
+                ['id' => $id, 'del' => 1, 'sesskey' => sesskey()]
+            ),
+        ]
+    );
 
     echo html_writer::start_div('w-75');
     $preseteditform->display();

@@ -28,7 +28,6 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class xml_importer {
-
     /**
      * Parse the XML questions.
      *
@@ -38,9 +37,9 @@ class xml_importer {
      * @return true on success, false otherwise
      */
     public static function parse_questions(
-            int $categoryid,
-            stdClass $llmresponse,
-            bool $addidentifier,
+        int $categoryid,
+        stdClass $llmresponse,
+        bool $addidentifier,
     ): bool {
         global $CFG, $DB;
 
@@ -93,8 +92,8 @@ class xml_importer {
         }
 
         $eventparams = [
-                'contextid' => $qformat->category->contextid,
-                'other' => ['format' => $fileformat, 'categoryid' => $qformat->category->id],
+            'contextid' => $qformat->category->contextid,
+            'other' => ['format' => $fileformat, 'categoryid' => $qformat->category->id],
         ];
 
         $event = \core\event\questions_imported::create($eventparams);
@@ -127,8 +126,11 @@ class xml_importer {
         // If the user chose to add an identifier to the question title and the global admin setting provides a proper identifier,
         // we add this to the question title.
         if (!empty($aiidentifier) && $addidentifier) {
-            if (!isset($xmlasobject->question) || !isset($xmlasobject->question->name) ||
-                    !isset($xmlasobject->question->name->text)) {
+            if (
+                !isset($xmlasobject->question)
+                || !isset($xmlasobject->question->name)
+                || !isset($xmlasobject->question->name->text)
+            ) {
                 // The XML could be broken, so we just output some debugging and return.
                 debugging('Could not add an AI identifier because the XML is broken. Parsed XML:');
                 debugging($xmlasobject->asXML());

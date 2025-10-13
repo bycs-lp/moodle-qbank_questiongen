@@ -27,7 +27,6 @@ use core_question\local\bank\navigation_node_base;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class plugin_feature extends \core_question\local\bank\plugin_features_base {
-
     #[\Override]
     public function get_navigation_node(): ?navigation_node_base {
         global $PAGE, $USER;
@@ -35,8 +34,10 @@ class plugin_feature extends \core_question\local\bank\plugin_features_base {
         $provider = get_config('qbank_questiongen', 'provider');
         if ($provider === 'local_ai_manager') {
             $aiconfig = \local_ai_manager\ai_manager_utils::get_ai_config($USER, $PAGE->context->id, null, ['questiongeneration']);
-            if ($aiconfig['availability']['available'] === \local_ai_manager\ai_manager_utils::AVAILABILITY_HIDDEN
-                    || $aiconfig['purposes'][0]['available'] === \local_ai_manager\ai_manager_utils::AVAILABILITY_HIDDEN) {
+            if (
+                $aiconfig['availability']['available'] === \local_ai_manager\ai_manager_utils::AVAILABILITY_HIDDEN
+                || $aiconfig['purposes'][0]['available'] === \local_ai_manager\ai_manager_utils::AVAILABILITY_HIDDEN
+            ) {
                 return null;
             }
         }

@@ -29,7 +29,6 @@ use qbank_questiongen\local\question_generator;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 final class lib_test extends \advanced_testcase {
-
     /**
      * Tests the functionality of the after_file_deleted callback.
      *
@@ -45,13 +44,17 @@ final class lib_test extends \advanced_testcase {
         $fs = get_file_storage();
         // That's just a fake file record for testing purposes. We just need a stored_file.
         $filerecord = ['component' => 'qbank_questiongen', 'filearea' => 'test', 'contextid' => $qbankcminfo->context->id,
-                'itemid' => 0, 'filepath' => '/', 'filename' => 'testpdf.pdf'];
-        $file1 = $fs->create_file_from_string($filerecord,
-                file_get_contents($CFG->dirroot . '/question/bank/questiongen/tests/fixtures/testpdf.pdf'));
+            'itemid' => 0, 'filepath' => '/', 'filename' => 'testpdf.pdf'];
+        $file1 = $fs->create_file_from_string(
+            $filerecord,
+            file_get_contents($CFG->dirroot . '/question/bank/questiongen/tests/fixtures/testpdf.pdf')
+        );
         // We create a second identical file with different name, so they have the same content hash.
         $filerecord['filename'] = 'testpdf2.pdf';
-        $file2 = $fs->create_file_from_string($filerecord,
-                file_get_contents($CFG->dirroot . '/question/bank/questiongen/tests/fixtures/testpdf.pdf'));
+        $file2 = $fs->create_file_from_string(
+            $filerecord,
+            file_get_contents($CFG->dirroot . '/question/bank/questiongen/tests/fixtures/testpdf.pdf')
+        );
         $questiongenerator = new question_generator($qbankcminfo->context->id);
         $questiongenerator->store_to_record_cache($file1, 'fake extracted file content');
         $this->assertCount(1, $DB->get_records('qbank_questiongen_resource_cache'));

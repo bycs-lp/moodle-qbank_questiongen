@@ -29,7 +29,6 @@ require_once($CFG->libdir . '/formslib.php');
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class story_form extends \moodleform {
-
     /** @var int constant defining the question generation mode: generate questions based on a topic. */
     const QUESTIONGEN_MODE_TOPIC = 1;
 
@@ -45,56 +44,65 @@ class story_form extends \moodleform {
 
         $mform = $this->_form;
         $contexts = $this->_customdata['contexts']->having_cap('moodle/question:add');
-        $contexts = array_filter($contexts,
-                fn($context) => $context->contextlevel !== CONTEXT_SYSTEM && $context->contextlevel !== CONTEXT_COURSECAT);
+        $contexts = array_filter(
+            $contexts,
+            fn($context) => $context->contextlevel !== CONTEXT_SYSTEM && $context->contextlevel !== CONTEXT_COURSECAT
+        );
 
         $mform->addElement('hidden', 'cmid', $this->_customdata['cmid']);
         $mform->setType('cmid', PARAM_INT);
 
         // Question category.
-        $mform->addElement('questioncategory', 'category', get_string('category', 'question'),
-                ['contexts' => $contexts]);
+        $mform->addElement(
+            'questioncategory',
+            'category',
+            get_string('category', 'question'),
+            ['contexts' => $contexts]
+        );
         $mform->addHelpButton('category', 'category', 'qbank_questiongen');
 
         // Number of questions.
         $defaultnumofquestions = 2;
         $select = $mform->addElement(
-                'select',
-                'numofquestions',
-                get_string('numofquestions', 'qbank_questiongen'),
-                ['1' => 1, '2' => 2, '3' => 3, '4' => 4, '5' => 5, '6' => 6, '7' => 7, '8' => 8, '9' => 9, '10' => 10]
+            'select',
+            'numofquestions',
+            get_string('numofquestions', 'qbank_questiongen'),
+            ['1' => 1, '2' => 2, '3' => 3, '4' => 4, '5' => 5, '6' => 6, '7' => 7, '8' => 8, '9' => 9, '10' => 10]
         );
         $select->setSelected($defaultnumofquestions);
         $mform->setType('numofquestions', PARAM_INT);
 
-        $mform->addElement('select', 'mode', get_string('mode', 'qbank_questiongen'),
-                [
-                        self::QUESTIONGEN_MODE_TOPIC => get_string('modetopic', 'qbank_questiongen'),
-                        self::QUESTIONGEN_MODE_STORY => get_string('modestory', 'qbank_questiongen'),
-                        self::QUESTIONGEN_MODE_COURSECONTENTS => get_string('modecoursecontents', 'qbank_questiongen'),
-                ]
+        $mform->addElement(
+            'select',
+            'mode',
+            get_string('mode', 'qbank_questiongen'),
+            [
+                self::QUESTIONGEN_MODE_TOPIC => get_string('modetopic', 'qbank_questiongen'),
+                self::QUESTIONGEN_MODE_STORY => get_string('modestory', 'qbank_questiongen'),
+                self::QUESTIONGEN_MODE_COURSECONTENTS => get_string('modecoursecontents', 'qbank_questiongen'),
+            ]
         );
-        $mform->setType('mode', PARAM_INT);;
+        $mform->setType('mode', PARAM_INT);
         $mform->setDefault('mode', self::QUESTIONGEN_MODE_TOPIC);
         $mform->addHelpButton('mode', 'mode', 'qbank_questiongen');
 
         // Story.
         $mform->addElement(
-                'textarea',
-                'topic',
-                get_string('topic', 'qbank_questiongen'),
-                'wrap="virtual" rows="10" cols="50"'
+            'textarea',
+            'topic',
+            get_string('topic', 'qbank_questiongen'),
+            'wrap="virtual" rows="10" cols="50"'
         );
         $mform->setType('topic', PARAM_RAW);
         $mform->addHelpButton('topic', 'topic', 'qbank_questiongen');
-        $mform->hideIf('topic', 'mode', 'neq', self::QUESTIONGEN_MODE_TOPIC);;
+        $mform->hideIf('topic', 'mode', 'neq', self::QUESTIONGEN_MODE_TOPIC);
 
         // Story.
         $mform->addElement(
-                'textarea',
-                'story',
-                get_string('story', 'qbank_questiongen'),
-                'wrap="virtual" rows="10" cols="50"'
+            'textarea',
+            'story',
+            get_string('story', 'qbank_questiongen'),
+            'wrap="virtual" rows="10" cols="50"'
         );
         $mform->setType('story', PARAM_RAW);
         $mform->addHelpButton('story', 'story', 'qbank_questiongen');
@@ -111,9 +119,14 @@ class story_form extends \moodleform {
             }
         }
 
-        $mform->addElement('autocomplete', 'courseactivities', get_string('activitylist', 'qbank_questiongen'), $courseactivities,
-                ['multiple' => true]);
-        $mform->hideIf('courseactivities', 'mode', 'neq', self::QUESTIONGEN_MODE_COURSECONTENTS);;
+        $mform->addElement(
+            'autocomplete',
+            'courseactivities',
+            get_string('activitylist', 'qbank_questiongen'),
+            $courseactivities,
+            ['multiple' => true]
+        );
+        $mform->hideIf('courseactivities', 'mode', 'neq', self::QUESTIONGEN_MODE_COURSECONTENTS);
         $mform->addHelpButton('courseactivities', 'activitylist', 'qbank_questiongen');
 
         // Preset selection.
@@ -125,8 +138,12 @@ class story_form extends \moodleform {
         $mform->addElement('select', 'preset', get_string('preset', 'qbank_questiongen'), $presets);
 
         if (has_capability('qbank/questiongen:manage', \context_system::instance())) {
-            $mform->addElement('static', 'manageglobalpresets', '',
-                    $OUTPUT->render_from_template('qbank_questiongen/managelink', []));
+            $mform->addElement(
+                'static',
+                'manageglobalpresets',
+                '',
+                $OUTPUT->render_from_template('qbank_questiongen/managelink', [])
+            );
         }
 
         // Edit preset.
@@ -138,10 +155,10 @@ class story_form extends \moodleform {
 
             // Primer.
             $mform->addElement(
-                    'textarea',
-                    'primer' . $id,
-                    get_string('primer', 'qbank_questiongen'),
-                    'wrap="virtual" rows="10" cols="50"'
+                'textarea',
+                'primer' . $id,
+                get_string('primer', 'qbank_questiongen'),
+                'wrap="virtual" rows="10" cols="50"'
             );
             $mform->setType('primer' . $id, PARAM_RAW);
             $mform->setDefault('primer' . $id, $presetrecord->primer);
@@ -151,10 +168,10 @@ class story_form extends \moodleform {
 
             // Instructions.
             $mform->addElement(
-                    'textarea',
-                    'instructions' . $id,
-                    get_string('instructions', 'qbank_questiongen'),
-                    'wrap="virtual" rows="10" cols="50"'
+                'textarea',
+                'instructions' . $id,
+                get_string('instructions', 'qbank_questiongen'),
+                'wrap="virtual" rows="10" cols="50"'
             );
             $mform->setType('instructions' . $id, PARAM_RAW);
             $mform->setDefault('instructions' . $id, $presetrecord->instructions);
@@ -164,10 +181,10 @@ class story_form extends \moodleform {
 
             // Example.
             $mform->addElement(
-                    'textarea',
-                    'example' . $id,
-                    get_string('example', 'qbank_questiongen'),
-                    'wrap="virtual" rows="10" cols="50"'
+                'textarea',
+                'example' . $id,
+                get_string('example', 'qbank_questiongen'),
+                'wrap="virtual" rows="10" cols="50"'
             );
             $mform->setType('example' . $id, PARAM_RAW);
             $mform->setDefault('example' . $id, $presetrecord->example);
@@ -176,8 +193,11 @@ class story_form extends \moodleform {
             $mform->hideIf('example' . $id, 'preset', 'neq', "$id");
         }
 
-        $mform->addElement('checkbox', 'sendexistingquestionsascontext',
-                get_string('sendexistingquestionsascontext', 'qbank_questiongen'));
+        $mform->addElement(
+            'checkbox',
+            'sendexistingquestionsascontext',
+            get_string('sendexistingquestionsascontext', 'qbank_questiongen')
+        );
         $mform->addHelpButton('sendexistingquestionsascontext', 'sendexistingquestionsascontext', 'qbank_questiongen');
         $mform->setDefault('sendexistingquestionsascontext', 1);
         $mform->setType('sendexistingquestionsascontext', PARAM_BOOL);

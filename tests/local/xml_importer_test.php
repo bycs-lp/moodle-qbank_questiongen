@@ -31,7 +31,6 @@ use stdClass;
  * @covers    \local_ai_manager\local\observers
  */
 final class xml_importer_test extends \advanced_testcase {
-
     /**
      * Tests the functionality that substitutes certain placeholders in a string.
      *
@@ -59,8 +58,9 @@ final class xml_importer_test extends \advanced_testcase {
 
         $this->assertEquals('French Revolution Cause', $question->name);
         $this->assertEquals(
-                '<p>Which of the following was a major contributing factor to the outbreak of the French Revolution?</p>',
-                $question->questiontext);
+            '<p>Which of the following was a major contributing factor to the outbreak of the French Revolution?</p>',
+            $question->questiontext
+        );
 
         // Reset, so we can run the test again with different aiidentifier parameter.
         question_delete_question($question->id);

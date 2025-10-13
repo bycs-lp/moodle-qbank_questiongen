@@ -25,7 +25,6 @@ namespace qbank_questiongen;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class navigation extends \core_question\local\bank\navigation_node_base {
-
     #[\Override]
     public function get_navigation_title(): string {
         return get_string('pluginname', 'qbank_questiongen');

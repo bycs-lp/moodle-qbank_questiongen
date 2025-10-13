@@ -25,18 +25,25 @@ namespace qbank_questiongen\local;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class hook_callbacks {
-
     /**
      * Provide additional information about which purposes are being used by this plugin.
      *
      * @param \local_ai_manager\hook\purpose_usage $hook the purpose_usage hook object
      */
     public static function handle_purpose_usage(\local_ai_manager\hook\purpose_usage $hook): void {
-        $hook->set_component_displayname('qbank_questiongen',
-                get_string('pluginname_userfaced', 'qbank_questiongen'));
-        $hook->add_purpose_usage_description('questiongeneration', 'qbank_questiongen',
-                get_string('purposeplacedescription_questiongeneration', 'qbank_questiongen'));
-        $hook->add_purpose_usage_description('itt', 'qbank_questiongen',
-                get_string('purposeplacedescription_itt', 'qbank_questiongen'));
+        $hook->set_component_displayname(
+            'qbank_questiongen',
+            get_string('pluginname_userfaced', 'qbank_questiongen')
+        );
+        $hook->add_purpose_usage_description(
+            'questiongeneration',
+            'qbank_questiongen',
+            get_string('purposeplacedescription_questiongeneration', 'qbank_questiongen')
+        );
+        $hook->add_purpose_usage_description(
+            'itt',
+            'qbank_questiongen',
+            get_string('purposeplacedescription_itt', 'qbank_questiongen')
+        );
     }
 }
