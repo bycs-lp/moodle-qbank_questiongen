@@ -25,7 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'qbank_questiongen';
-$plugin->release = '2.1';
+$plugin->release = '2.2';
 $plugin->version  = 2025071600;
 $plugin->requires = 2025041401;
 $plugin->supported = [500, 501];
