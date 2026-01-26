@@ -446,9 +446,10 @@ class question_generator {
      */
     public function is_mimetype_supported_by_ai_system(string $mimetype): bool {
         global $USER;
+        $aiconfig = ai_manager_utils::get_ai_config($USER, $this->contextid, null, ['itt']);
         if (
-            ai_manager_utils::get_ai_config($USER, $this->contextid, null, ['itt'])['availability']
-            !== ai_manager_utils::AVAILABILITY_AVAILABLE
+            $aiconfig['availability']['available'] !== ai_manager_utils::AVAILABILITY_AVAILABLE
+            || $aiconfig['purposes'][0]['available'] !== ai_manager_utils::AVAILABILITY_AVAILABLE
         ) {
             throw new questiongen_exception('errorimagetotextnotavailable', 'qbank_questiongen');
         }
