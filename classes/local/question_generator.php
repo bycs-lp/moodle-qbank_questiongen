@@ -103,7 +103,7 @@ class question_generator {
                                     $questiontextsinqbankprompt;
                 }
             }
-            $modeheader = '\n\n## QUESTION GENERATION MODE - ';
+            $modeheader = '## QUESTION GENERATION MODE - ';
             switch ($dataobject->mode) {
                 case story_form::QUESTIONGEN_MODE_TOPIC:
                     $storyprompt =
@@ -116,9 +116,10 @@ class question_generator {
                     $storyprompt =
                         $modeheader . 'COURSE CONTENTS\n' .
                         'Create a question from the following contents. ' .
-                        'Only use this content and do not use any training data: "' .
+                        'Only use this content and do not use any training data:\n"' .
+                        '### START OF COURSE CONTENT\n' .
                         $story .
-                        '"';
+                        '\n### END OF COURSE CONTENT"';
                     break;
             }
 
