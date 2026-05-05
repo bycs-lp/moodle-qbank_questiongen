@@ -69,18 +69,25 @@ class question_generator {
         $example = $dataobject->example;
 
         $storyprompt = '';
+        $systemprompt = '';
+        $userprompt = '';
         $questiontextsinqbankprompt = '';
         $generatedquestiontext = '';
 
         $provider = get_config('qbank_questiongen', 'provider');
         if ($provider === 'local_ai_manager') {
-            $systemprompt =
-                '## PRIMER' . "\n"
-                . $primer . "\n\n"
-                . '## INSTRUCTIONS' . "\n"
-                . $instructions . "\n\n"
-                . '## EXAMPLE MOODLE XML QUESTION' . "\n"
-                . $example;
+            $systemprompttemplate = get_config('qbank_questiongen', 'systemprompt');
+            $systemprompt = str_replace(
+                ['{{primer}}', '{{instructions}}', '{{example}}'],
+                [$primer, $instructions, $example],
+                $systemprompttemplate
+            );
+            $messages = [
+                [
+                    'sender' => 'system',
+                    'message' => $systemprompt,
+                ],
+            ];
 
             // Append existing questions to the prompt if option is chosen.
             if ($sendexistingquestionsascontext) {
@@ -126,16 +133,13 @@ class question_generator {
                     break;
             }
 
-            $messages = [
-                [
-                    'sender' => 'system',
-                    'message' => $systemprompt,
-                ],
+            $userprompttemplate = get_config('qbank_questiongen', 'userprompt');
+            $userprompt = str_replace('{{storyprompt}}', $storyprompt, $userprompttemplate);
+            $messages[] =
                 [
                     'sender' => 'user',
-                    'message' => $storyprompt,
-                ],
-            ];
+                    'message' => $userprompt,
+                ];
 
             [
                 'generatedquestiontext' => $generatedquestiontext,
@@ -152,6 +156,8 @@ class question_generator {
         $question->primer = $primer;
         $question->instructions = $instructions;
         $question->example = $example;
+        $question->systemprompt = $systemprompt;
+        $question->userprompt = $userprompt;
         $question->storyprompt = $storyprompt;
         $question->questiontextsinqbankprompt = $questiontextsinqbankprompt;
         $question->text = $generatedquestiontext;
