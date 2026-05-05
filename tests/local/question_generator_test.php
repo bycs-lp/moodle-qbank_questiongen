@@ -39,6 +39,8 @@ final class question_generator_test extends \advanced_testcase {
         global $CFG;
         $this->resetAfterTest();
         set_config('provider', 'local_ai_manager', 'qbank_questiongen');
+        set_config('systemprompt', "{{primer}}\n\n{{instructions}}\n\n{{example}}", 'qbank_questiongen');
+        set_config('userprompt', '{{storyprompt}}', 'qbank_questiongen');
 
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
@@ -76,6 +78,11 @@ final class question_generator_test extends \advanced_testcase {
             . $dataobject->story;
         $this->assertEquals($expectedstoryprompt, $questionobject->storyprompt);
         $this->assertEmpty($questionobject->questiontextsinqbankprompt);
+        // Verify that the systemprompt template placeholders are correctly replaced.
+        $expectedsystemprompt = $dataobject->primer . "\n\n" . $dataobject->instructions . "\n\n" . $dataobject->example;
+        $this->assertEquals($expectedsystemprompt, $questionobject->systemprompt);
+        // Verify that the userprompt template placeholder is correctly replaced.
+        $this->assertEquals($expectedstoryprompt, $questionobject->userprompt);
 
         // Now test if sending questions as context works.
         $questionplugingenerator->create_question(
