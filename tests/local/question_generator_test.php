@@ -18,7 +18,6 @@ namespace qbank_questiongen\local;
 
 use context_module;
 use core_question\local\bank\question_bank_helper;
-use PHPUnit\Framework\Attributes\Group;
 use qbank_questiongen\form\story_form;
 use stdClass;
 
@@ -35,8 +34,8 @@ final class question_generator_test extends \advanced_testcase {
      * Tests the functionality that substitutes certain placeholders in a string.
      *
      * @covers \qbank_questiongen\local\question_generator::generate_question
+     * @group baseline
      */
-    #[Group('baseline')]
     public function test_generate_question(): void {
         global $CFG;
         $this->resetAfterTest();
