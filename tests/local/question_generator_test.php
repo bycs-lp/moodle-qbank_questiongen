@@ -31,17 +31,152 @@ use stdClass;
  */
 final class question_generator_test extends \advanced_testcase {
     /**
+     * Tests that render_prompt_template correctly handles all placeholder and conditional combinations.
+     *
+     * @param string $template the Mustache template to render
+     * @param array $context the context variables
+     * @param string[] $expectedcontains strings that must appear in the rendered output
+     * @param string[] $expectednotcontains strings that must not appear in the rendered output
+     * @dataProvider render_prompt_template_provider
+     * @covers \qbank_questiongen\local\question_generator::render_prompt_template
+     * @covers \qbank_questiongen\local\question_generator::get_default_prompt_template
+     */
+    public function test_render_prompt_template(
+        string $template,
+        array $context,
+        array $expectedcontains,
+        array $expectednotcontains
+    ): void {
+        $rendered = question_generator::render_prompt_template($template, $context);
+        foreach ($expectedcontains as $expected) {
+            $this->assertStringContainsString($expected, $rendered);
+        }
+        foreach ($expectednotcontains as $notexpected) {
+            $this->assertStringNotContainsString($notexpected, $rendered);
+        }
+    }
+
+    /**
+     * Data provider for test_render_prompt_template.
+     *
+     * @return array[]
+     */
+    public static function render_prompt_template_provider(): array {
+        $default = question_generator::get_default_prompt_template();
+        $primer = 'Test primer';
+        $instructions = 'Test instructions';
+        $example = '<question><text>Test example</text></question>';
+        $story = 'French revolution';
+        $existingjson = '[{"title":"Q1","question_text":"Some text"}]';
+
+        $basecontext = [
+            'example' => $example,
+            'existingquestionsjson' => '',
+            'instructions' => $instructions,
+            'mode_story' => false,
+            'mode_topic' => false,
+            'primer' => $primer,
+            'sendexistingquestions' => false,
+            'story' => $story,
+        ];
+
+        return [
+            'topic_mode_no_existing_questions' => [
+                'template' => $default,
+                'context' => array_merge($basecontext, ['mode_topic' => true]),
+                'expectedcontains' => [
+                    $primer,
+                    $instructions,
+                    $example,
+                    'QUESTION GENERATION MODE - TOPIC',
+                    'Use your own training data',
+                    $story,
+                ],
+                'expectednotcontains' => [
+                    'ALREADY EXISTING QUESTIONS',
+                    'QUESTION GENERATION MODE - CONTENTS',
+                ],
+            ],
+            'topic_mode_with_existing_questions' => [
+                'template' => $default,
+                'context' => array_merge($basecontext, [
+                    'existingquestionsjson' => $existingjson,
+                    'mode_topic' => true,
+                    'sendexistingquestions' => true,
+                ]),
+                'expectedcontains' => [
+                    $primer,
+                    $instructions,
+                    $example,
+                    'ALREADY EXISTING QUESTIONS',
+                    $existingjson,
+                    'QUESTION GENERATION MODE - TOPIC',
+                    $story,
+                ],
+                'expectednotcontains' => [
+                    'QUESTION GENERATION MODE - CONTENTS',
+                ],
+            ],
+            'story_mode_no_existing_questions' => [
+                'template' => $default,
+                'context' => array_merge($basecontext, ['mode_story' => true]),
+                'expectedcontains' => [
+                    $primer,
+                    $instructions,
+                    $example,
+                    'QUESTION GENERATION MODE - CONTENTS',
+                    'Only use this contents',
+                    'START OF USER PROVIDED CONTENT',
+                    $story,
+                    'END OF USER PROVIDED CONTENT',
+                ],
+                'expectednotcontains' => [
+                    'ALREADY EXISTING QUESTIONS',
+                    'QUESTION GENERATION MODE - TOPIC',
+                ],
+            ],
+            'story_mode_with_existing_questions' => [
+                'template' => $default,
+                'context' => array_merge($basecontext, [
+                    'existingquestionsjson' => $existingjson,
+                    'mode_story' => true,
+                    'sendexistingquestions' => true,
+                ]),
+                'expectedcontains' => [
+                    $primer,
+                    $instructions,
+                    $example,
+                    'ALREADY EXISTING QUESTIONS',
+                    $existingjson,
+                    'QUESTION GENERATION MODE - CONTENTS',
+                    $story,
+                ],
+                'expectednotcontains' => [
+                    'QUESTION GENERATION MODE - TOPIC',
+                ],
+            ],
+            'custom_template' => [
+                'template' => '{{primer}} | {{instructions}} | {{#mode_topic}}TOPIC{{/mode_topic}}{{#mode_story}}STORY{{/mode_story}}',
+                'context' => array_merge($basecontext, ['mode_topic' => true]),
+                'expectedcontains' => [$primer, $instructions, 'TOPIC'],
+                'expectednotcontains' => ['STORY'],
+            ],
+        ];
+    }
+
+    /**
      * Tests the functionality that substitutes certain placeholders in a string.
      *
      * @covers \qbank_questiongen\local\question_generator::generate_question
+     * @covers \qbank_questiongen\local\question_generator::get_default_prompt_template
      * @group baseline
      */
+    #[\PHPUnit\Framework\Attributes\Group('baseline')]
     public function test_generate_question(): void {
         global $CFG;
         $this->resetAfterTest();
         set_config('provider', 'local_ai_manager', 'qbank_questiongen');
-        set_config('systemprompt', "{{primer}}\n\n{{instructions}}\n\n{{example}}", 'qbank_questiongen');
-        set_config('userprompt', '{{storyprompt}}', 'qbank_questiongen');
+        set_config('systemprompt', question_generator::get_default_prompt_template(), 'qbank_questiongen');
 
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
@@ -69,21 +204,19 @@ final class question_generator_test extends \advanced_testcase {
         $dataobject->instructions = $presetjson->instructions;
         $dataobject->example = $presetjson->example;
 
+        // Test topic mode without existing questions.
         $questionobject = $questiongenerator->generate_question($dataobject, false);
         $this->assertEquals($generatedxmlfixture, $questionobject->text);
         $this->assertEquals($presetjson->primer, $questionobject->primer);
         $this->assertEquals($presetjson->instructions, $questionobject->instructions);
         $this->assertEquals($presetjson->example, $questionobject->example);
-        $expectedstoryprompt = '## QUESTION GENERATION MODE - TOPIC' . "\n"
-            . 'Create a question about the following topic. Use your own training data to generate it:' . "\n"
-            . $dataobject->story;
-        $this->assertEquals($expectedstoryprompt, $questionobject->storyprompt);
-        $this->assertEmpty($questionobject->questiontextsinqbankprompt);
-        // Verify that the systemprompt template placeholders are correctly replaced.
-        $expectedsystemprompt = $dataobject->primer . "\n\n" . $dataobject->instructions . "\n\n" . $dataobject->example;
-        $this->assertEquals($expectedsystemprompt, $questionobject->systemprompt);
-        // Verify that the userprompt template placeholder is correctly replaced.
-        $this->assertEquals($expectedstoryprompt, $questionobject->userprompt);
+        $this->assertStringContainsString($dataobject->primer, $questionobject->systemprompt);
+        $this->assertStringContainsString($dataobject->instructions, $questionobject->systemprompt);
+        $this->assertStringContainsString($dataobject->example, $questionobject->systemprompt);
+        $this->assertStringContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->systemprompt);
+        $this->assertStringContainsString($dataobject->story, $questionobject->systemprompt);
+        $this->assertStringNotContainsString('ALREADY EXISTING QUESTIONS', $questionobject->systemprompt);
+        $this->assertStringNotContainsString('QUESTION GENERATION MODE - CONTENTS', $questionobject->systemprompt);
 
         // Now test if sending questions as context works.
         $questionplugingenerator->create_question(
@@ -116,25 +249,15 @@ final class question_generator_test extends \advanced_testcase {
         );
         $questionobject = $questiongenerator->generate_question($dataobject, true);
         $this->assertEquals($generatedxmlfixture, $questionobject->text);
-        $this->assertEquals($presetjson->primer, $questionobject->primer);
-        $this->assertEquals($presetjson->instructions, $questionobject->instructions);
-        $this->assertEquals($presetjson->example, $questionobject->example);
-        // The variable $expectedstoryprompt still is valid and thus does not need to be redefined.
-        $this->assertEquals($expectedstoryprompt, $questionobject->storyprompt);
-        $this->assertStringStartsWith('## ALREADY EXISTING QUESTIONS' . "\n", $questionobject->questiontextsinqbankprompt);
-        $this->assertStringContainsString(
-            'The question that will be generated by you has to be as different '
-            . 'as possible from all of the following questions in this JSON string: "',
-            $questionobject->questiontextsinqbankprompt
-        );
-        $this->assertStringContainsString('Test question 1', $questionobject->questiontextsinqbankprompt);
-        $this->assertStringContainsString('Write some intelligent stuff', $questionobject->questiontextsinqbankprompt);
-        $this->assertStringContainsString('Test question 2', $questionobject->questiontextsinqbankprompt);
-        $this->assertStringContainsString('Write some more intelligent stuff', $questionobject->questiontextsinqbankprompt);
-        $this->assertStringNotContainsString('Test question 3', $questionobject->questiontextsinqbankprompt);
+        $this->assertStringContainsString('ALREADY EXISTING QUESTIONS', $questionobject->systemprompt);
+        $this->assertStringContainsString('Test question 1', $questionobject->systemprompt);
+        $this->assertStringContainsString('Write some intelligent stuff', $questionobject->systemprompt);
+        $this->assertStringContainsString('Test question 2', $questionobject->systemprompt);
+        $this->assertStringContainsString('Write some more intelligent stuff', $questionobject->systemprompt);
+        $this->assertStringNotContainsString('Test question 3', $questionobject->systemprompt);
         $this->assertStringNotContainsString(
             'This question should not be sent, because it\'s in a different category',
-            $questionobject->questiontextsinqbankprompt
+            $questionobject->systemprompt
         );
 
         // Test story mode.
@@ -145,33 +268,30 @@ final class question_generator_test extends \advanced_testcase {
         $this->assertEquals($presetjson->primer, $questionobject->primer);
         $this->assertEquals($presetjson->instructions, $questionobject->instructions);
         $this->assertEquals($presetjson->example, $questionobject->example);
-        $expectedstoryprompt = '## QUESTION GENERATION MODE - CONTENTS' . "\n"
-            . 'Create a question from the following contents. '
-            . 'Only use this contents and do not use any training data:' . "\n"
-            . '### START OF USER PROVIDED CONTENT' . "\n"
-            . $dataobject->story . "\n"
-            . '### END OF USER PROVIDED CONTENT';
-        $this->assertEquals($expectedstoryprompt, $questionobject->storyprompt);
-        $this->assertEmpty($questionobject->questiontextsinqbankprompt);
+        $this->assertStringContainsString('QUESTION GENERATION MODE - CONTENTS', $questionobject->systemprompt);
+        $this->assertStringContainsString('START OF USER PROVIDED CONTENT', $questionobject->systemprompt);
+        $this->assertStringContainsString($dataobject->story, $questionobject->systemprompt);
+        $this->assertStringNotContainsString('ALREADY EXISTING QUESTIONS', $questionobject->systemprompt);
+        $this->assertStringNotContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->systemprompt);
 
-        // Test course contents mode.
-        // We do not really test the generation of text from course contents, this is being done by the test for
-        // the method create_story_from_cms.
+        // Test course contents mode (same behaviour as story mode).
         $dataobject->mode = story_form::QUESTIONGEN_MODE_COURSECONTENTS;
         $dataobject->story = 'This is a lot of content that the LLM can use to generate questions from.';
         $questionobject = $questiongenerator->generate_question($dataobject, false);
         $this->assertEquals($generatedxmlfixture, $questionobject->text);
-        $this->assertEquals($presetjson->primer, $questionobject->primer);
-        $this->assertEquals($presetjson->instructions, $questionobject->instructions);
-        $this->assertEquals($presetjson->example, $questionobject->example);
-        $expectedstoryprompt = '## QUESTION GENERATION MODE - CONTENTS' . "\n"
-            . 'Create a question from the following contents. '
-            . 'Only use this contents and do not use any training data:' . "\n"
-            . '### START OF USER PROVIDED CONTENT' . "\n"
-            . $dataobject->story . "\n"
-            . '### END OF USER PROVIDED CONTENT';
-        $this->assertEquals($expectedstoryprompt, $questionobject->storyprompt);
-        $this->assertEmpty($questionobject->questiontextsinqbankprompt);
+        $this->assertStringContainsString('QUESTION GENERATION MODE - CONTENTS', $questionobject->systemprompt);
+        $this->assertStringContainsString($dataobject->story, $questionobject->systemprompt);
+        $this->assertStringNotContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->systemprompt);
+
+        // Verify that an empty systemprompt config falls back to the built-in default template (non-breaking upgrade check).
+        set_config('systemprompt', '', 'qbank_questiongen');
+        $dataobject->mode = story_form::QUESTIONGEN_MODE_TOPIC;
+        $dataobject->story = 'French revolution';
+        $questionobject = $questiongenerator->generate_question($dataobject, false);
+        $this->assertEquals($generatedxmlfixture, $questionobject->text);
+        $this->assertStringContainsString($presetjson->primer, $questionobject->systemprompt);
+        $this->assertStringContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->systemprompt);
+        $this->assertStringContainsString($dataobject->story, $questionobject->systemprompt);
     }
 
     /**

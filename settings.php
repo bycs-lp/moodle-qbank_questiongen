@@ -89,16 +89,7 @@ if ($hassiteconfig) {
             'qbank_questiongen/systemprompt',
             get_string('systemprompt', 'qbank_questiongen'),
             get_string('systempromptdesc', 'qbank_questiongen'),
-            ''
-        )
-    );
-
-    $settings->add(
-        new admin_setting_configtextarea(
-            'qbank_questiongen/userprompt',
-            get_string('userprompt', 'qbank_questiongen'),
-            get_string('userpromptdesc', 'qbank_questiongen'),
-            ''
+            \qbank_questiongen\local\question_generator::get_default_prompt_template()
         )
     );
 
