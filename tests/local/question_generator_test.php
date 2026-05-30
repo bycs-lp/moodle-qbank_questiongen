@@ -156,7 +156,8 @@ final class question_generator_test extends \advanced_testcase {
                 ],
             ],
             'custom_template' => [
-                'template' => '{{primer}} | {{instructions}} | {{#mode_topic}}TOPIC{{/mode_topic}}{{#mode_story}}STORY{{/mode_story}}',
+                'template' => '{{primer}} | {{instructions}} | {{#mode_topic}}TOPIC{{/mode_topic}}' .
+                    '{{#mode_story}}STORY{{/mode_story}}',
                 'context' => array_merge($basecontext, ['mode_topic' => true]),
                 'expectedcontains' => [$primer, $instructions, 'TOPIC'],
                 'expectednotcontains' => ['STORY'],
@@ -171,7 +172,6 @@ final class question_generator_test extends \advanced_testcase {
      * @covers \qbank_questiongen\local\question_generator::get_default_prompt_template
      * @group baseline
      */
-    #[\PHPUnit\Framework\Attributes\Group('baseline')]
     public function test_generate_question(): void {
         global $CFG;
         $this->resetAfterTest();
