@@ -129,7 +129,22 @@ $string['sendexistingquestionsascontext_help'] = 'Enable to make the tool send a
 $string['story'] = 'Content';
 $string['story_help'] = 'Provide the content the LLM should generate questions from. If this is being used the LLM is being instructed not to use own training data but instead use whatever you insert here. You can also copy/paste whole articles, for example from wikipedia. Make sure you provide enough content to allow the LLM to generate useful questions.';
 $string['systemprompt'] = 'System prompt template';
-$string['systempromptdesc'] = 'This template is sent to the AI as the system prompt. Changing it affects all generated questions, so edit it with care. The built-in default template is shown in the field below and is used if the setting is empty.';
+$string['systempromptdesc'] = 'This template is sent to the AI as the system prompt. Changing it affects all generated questions globally, so edit it with care. Leave the field empty to fall back to the built-in default template shown below.<br>
+<br>
+<strong>Placeholders</strong> are replaced with actual values at generation time:<br>
+<ul>
+<li><strong>{{primer}}</strong> – introductory text from the preset</li>
+<li><strong>{{instructions}}</strong> – instructions text from the preset</li>
+<li><strong>{{example}}</strong> – example output from the preset</li>
+<li><strong>{{story}}</strong> – the topic or content provided by the user</li>
+<li><strong>{{existingquestionsjson}}</strong> – existing questions in the category as JSON (only relevant inside the sendexistingquestions block)</li>
+</ul>
+<strong>Conditional blocks</strong> use the syntax <strong>{{#name}}...{{/name}}</strong> and are only included when the condition is active:<br>
+<ul>
+<li><strong>{{#mode_topic}}...{{/mode_topic}}</strong> – only included in "Topic" mode</li>
+<li><strong>{{#mode_story}}...{{/mode_story}}</strong> – only included in "Provide content" or "Course contents" mode</li>
+<li><strong>{{#sendexistingquestions}}...{{/sendexistingquestions}}</strong> – only included when "Send existing questions as context" is enabled</li>
+</ul>';
 $string['tasksuccess'] = 'The question generation task was successfully created';
 $string['topic'] = 'Topic';
 $string['topic_help'] = 'The topic of your questions. Describe the topic you want the LLM to generate questions for.';
