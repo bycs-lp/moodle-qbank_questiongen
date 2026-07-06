@@ -89,7 +89,25 @@ if ($hassiteconfig) {
             'qbank_questiongen/systemprompt',
             get_string('systemprompt', 'qbank_questiongen'),
             get_string('systempromptdesc', 'qbank_questiongen'),
-            \qbank_questiongen\local\question_generator::get_default_prompt_template()
+            \qbank_questiongen\local\question_generator::get_default_system_prompt()
+        )
+    );
+
+    $settings->add(
+        new admin_setting_configtextarea(
+            'qbank_questiongen/usermessagetopic',
+            get_string('usermessagetopic', 'qbank_questiongen'),
+            get_string('usermessagetopicdesc', 'qbank_questiongen'),
+            \qbank_questiongen\local\question_generator::get_default_usermessage_topic()
+        )
+    );
+
+    $settings->add(
+        new admin_setting_configtextarea(
+            'qbank_questiongen/usermessagecontent',
+            get_string('usermessagecontent', 'qbank_questiongen'),
+            get_string('usermessagecontentdesc', 'qbank_questiongen'),
+            \qbank_questiongen\local\question_generator::get_default_usermessage_content()
         )
     );
 
