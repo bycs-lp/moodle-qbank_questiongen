@@ -128,7 +128,35 @@ $string['sendexistingquestionsascontext'] = 'Send existing questions as context'
 $string['sendexistingquestionsascontext_help'] = 'Enable to make the tool send all question titles and question texts from all the questions in the current category to the external AI system to enable the AI system to generate questions that are different from the already existing ones.';
 $string['story'] = 'Content';
 $string['story_help'] = 'Provide the content the LLM should generate questions from. If this is being used the LLM is being instructed not to use own training data but instead use whatever you insert here. You can also copy/paste whole articles, for example from wikipedia. Make sure you provide enough content to allow the LLM to generate useful questions.';
+$string['systemprompt'] = 'System prompt template';
+$string['systempromptdesc'] = 'This template is sent to the AI as the system prompt. It tells the AI how to behave in general, while the concrete instruction is sent separately as the user message (see the user message settings below). Changing this template affects all generated questions globally, so edit it with care. Leave the field empty to fall back to the built-in default template shown below.<br>
+<br>
+<strong>Placeholders</strong> are replaced with actual values at generation time:<br>
+<ul>
+<li><strong>{{primer}}</strong> – introductory text from the preset</li>
+<li><strong>{{instructions}}</strong> – instructions text from the preset</li>
+<li><strong>{{example}}</strong> – example output from the preset</li>
+<li><strong>{{existingquestionsjson}}</strong> – existing questions in the category as JSON (only relevant inside the sendexistingquestions block)</li>
+</ul>
+<strong>Conditional block</strong> uses the syntax <strong>{{#name}}...{{/name}}</strong> and is only included when the condition is active:<br>
+<ul>
+<li><strong>{{#sendexistingquestions}}...{{/sendexistingquestions}}</strong> – only included when "Send existing questions as context" is enabled</li>
+</ul>';
 $string['tasksuccess'] = 'The question generation task was successfully created';
 $string['topic'] = 'Topic';
 $string['topic_help'] = 'The topic of your questions. Describe the topic you want the LLM to generate questions for.';
+$string['usermessagecontent'] = 'User message template (content mode)';
+$string['usermessagecontentdesc'] = 'This template is sent to the AI as the user message when the question is generated in "Provide content" or "Course contents" mode, i.e. the AI must only use the provided content and not its own training data. Leave the field empty to fall back to the built-in default template shown below.<br>
+<br>
+<strong>Placeholder:</strong><br>
+<ul>
+<li><strong>{{story}}</strong> – the content provided by the user</li>
+</ul>';
+$string['usermessagetopic'] = 'User message template (topic mode)';
+$string['usermessagetopicdesc'] = 'This template is sent to the AI as the user message when the question is generated in "Topic" mode, i.e. the AI uses its own training data. Leave the field empty to fall back to the built-in default template shown below.<br>
+<br>
+<strong>Placeholder:</strong><br>
+<ul>
+<li><strong>{{story}}</strong> – the topic provided by the user</li>
+</ul>';
 $string['waitingforadhoctaskstart'] = 'Waiting for background task to start';
