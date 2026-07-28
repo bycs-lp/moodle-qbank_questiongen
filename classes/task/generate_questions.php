@@ -187,7 +187,10 @@ class generate_questions extends \core\task\adhoc_task {
      * It adds a message that currently one is waiting for the adhoc task to be picked up.
      */
     public function set_initial_progress(): void {
+        // Avoid rendering inline update JS in the initial page response before core progress scripts are available.
+        $this->progress->auto_update(false);
         $this->progress->update_full(0, get_string('waitingforadhoctaskstart', 'qbank_questiongen'));
+        $this->progress->auto_update(true);
     }
 
     #[\Override]

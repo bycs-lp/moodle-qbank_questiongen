@@ -25,11 +25,12 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'qbank_questiongen';
-$plugin->release = '2.3';
-$plugin->version  = 2026050800;
+$plugin->release = '3.0';
+$plugin->version  = 2026072800;
 $plugin->requires = 2025041401;
 $plugin->supported = [500, 502];
 $plugin->maturity = MATURITY_ALPHA;
 $plugin->dependencies = [
         'local_ai_manager' => 2025071600,
+        'local_ai_content' => ANY_VERSION,
 ];

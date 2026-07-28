@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="question/bank/questiongen/db" VERSION="20250602" COMMENT="XMLDB file for Moodle qtype_questiongen"
+<XMLDB PATH="question/bank/questiongen/db" VERSION="20260728" COMMENT="XMLDB file for Moodle qtype_questiongen"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../../lib/xmldb/xmldb.xsd"
 >
@@ -34,19 +34,6 @@
         <FIELD NAME="primer" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="The system prompt primer"/>
         <FIELD NAME="instructions" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Specific instructions on how to generate a question"/>
         <FIELD NAME="example" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Example question to use for generation"/>
-        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
-      </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-      </KEYS>
-    </TABLE>
-    <TABLE NAME="qbank_questiongen_resource_cache" COMMENT="Caches the content of resources">
-      <FIELDS>
-        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="contenthash" TYPE="char" LENGTH="40" NOTNULL="true" SEQUENCE="false" COMMENT="The contenthash of a file"/>
-        <FIELD NAME="extractedcontent" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="extracted content of the file as plain text"/>
-        <FIELD NAME="timelastaccessed" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>

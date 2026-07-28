@@ -1,6 +1,6 @@
 # AI question generator #
 
-This plugin allows you to automatically create questions using a large language model. It currently requires the local_ai_manager plugin (https://github.com/mebis-lp/moodle-local_ai_manager) that manages the connection to the external AI system. It's a fork of the "AI Text to questions generator" created byt Yedidia Klein and Ruthy Salomon.
+This plugin allows you to automatically create questions using a large language model. It requires the local_ai_manager plugin (https://github.com/bycs-lp/moodle-local_ai_manager) that manages the connection to the external AI system and the local_ai_content plugin (https://github.com/bycs-lp/moodle-local_ai_content) for document conversion and text extraction from files. It's a fork of the "AI Text to questions generator" created by Yedidia Klein and Ruthy Salomon.
 
 The plugin is in an alpha to beta stadium right now.
 
@@ -24,7 +24,7 @@ The plugin is in an alpha to beta stadium right now.
 
     The plugin will extract the text from these activities and send them to the AI system as context to generate questions from. This will typically not respect embedded images or PDF files.
   
-    **File and folder activities are currently supported for files with image file type and PDF. For being able to use "File" or "Folder" activitites you will have to configure an AI tool in the local_ai_manager for "image to text" purpose.** The files will be sent to the external AI system that will extract the text. If the external AI system does not support PDF, the PDF will be converted into images first by using the code in assignsubmission_editpdf. As the extraction of information from PDF (especially multipage PDFs) can be expensive regarding token usage, the extracted text is being cached in a separate table, so the text extraction is only being done once for a file in the moodle file system.
+    **File and folder activities are currently supported for files with image file type and PDF (and plain text files obviously). For being able to use "File" or "Folder" activities you will have to configure an AI tool in the local_ai_manager for "image to text" purpose.** The files will be sent to the external AI system that will extract the text. PDF conversion and extraction are handled by the local_ai_content plugin. As the extraction of information from PDF (especially multipage PDFs) can be expensive regarding token usage, extracted text is cached by local_ai_content.
 * In the question generation form the user can choose if he/she wants to send existing questions from the question bank as context to the external AI system. In this case the AI system is being advised to generate **different** questions from the ones being provided. Only the question title and question text are being passed to the AI system in this case.
 * The admin can define a prefix that should be added to the title of the questions. The user will be able to enable/disable this feature.
 * If the admin defines a tag, the generated questions will also be tagged with this tag. The user cannot overwrite this setting.
