@@ -211,12 +211,11 @@ final class question_generator_test extends \advanced_testcase {
         $filerecord['filename'] = 'testfile.txt';
         $file = $fs->create_file_from_string($filerecord, $testcontent);
 
-        $questiongenerator = $this->getMockBuilder(question_generator::class)
-            ->setConstructorArgs([$qbankcminfo->context->id])
-            ->onlyMethods(['extract_content_from_pdf_or_image'])
-            ->getMock();
-        $questiongenerator->method('extract_content_from_pdf_or_image')
-            ->willReturn('Extracted PDF or image content');
+        $extractor = $this->createMock(\local_ai_content\document_extractor::class);
+        $extractor->method('is_file_supported')
+            ->willReturnCallback(fn(\stored_file $file) => in_array($file->get_mimetype(), ['application/pdf', 'image/png']));
+        $extractor->method('extract_text_from_file')->willReturn('Extracted PDF or image content');
+        \core\di::set(\local_ai_content\document_extractor::class, $extractor);
         $content = $questiongenerator->extract_content_from_cm(get_fast_modinfo($course)->get_cm($resource->cmid));
         $this->assertEquals($testcontent, $content);
         $file->delete();
@@ -351,10 +350,9 @@ final class question_generator_test extends \advanced_testcase {
      * Tests the extraction of content from PDF or image with an external AI system.
      *
      * @covers \qbank_questiongen\local\question_generator::extract_content_from_pdf_or_image
-     * @covers \qbank_questiongen\local\question_generator::convert_pdf_to_images
      */
     public function test_extract_content_from_pdf_or_image(): void {
-        global $CFG, $DB;
+        global $CFG;
         $this->resetAfterTest();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
@@ -367,39 +365,61 @@ final class question_generator_test extends \advanced_testcase {
             $filerecord,
             file_get_contents($CFG->dirroot . '/question/bank/questiongen/tests/fixtures/testpdf.pdf')
         );
-        $questiongenerator = $this->getMockBuilder(question_generator::class)
-            ->setConstructorArgs([$qbankcminfo->context->id])
-            ->onlyMethods(['retrieve_file_content_from_ai_system', 'is_mimetype_supported_by_ai_system'])->getMock();
-        $questiongenerator->method('retrieve_file_content_from_ai_system')
-            // Only return 'content from file' once.
-            ->willReturnOnConsecutiveCalls('content from file', '');
-        // We have to fake the check if the external AI system supports the mimetype of the file we want to extract content from.
-        $questiongenerator->method('is_mimetype_supported_by_ai_system')->with('application/pdf')
-            ->willReturn(true);
 
-        $this->assertEquals('content from file', $questiongenerator->extract_content_from_pdf_or_image($file));
-        $cachedrecord = $DB->get_record('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()]);
-        $this->assertEquals('content from file', $cachedrecord->extractedcontent);
-        // The mock method only returns the content ONCE.
-        // If we call it a second time and if we receive the same result, that means that the caching mechanism works.
-        $this->assertEquals('content from file', $questiongenerator->extract_content_from_pdf_or_image($file));
-        // Empty the cache for next test.
-        $DB->delete_records('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()]);
-        $this->assertEmpty($DB->get_records('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()]));
+        $extractor = $this->createMock(\local_ai_content\document_extractor::class);
+        $extractor->expects($this->once())
+            ->method('extract_text_from_file')
+            ->with($file, $qbankcminfo->context->id, $file->get_userid() ?: null, 'qbank_questiongen')
+            ->willReturn('content from file');
+        \core\di::set(\local_ai_content\document_extractor::class, $extractor);
 
-        $questiongenerator = $this->getMockBuilder(question_generator::class)
-            ->setConstructorArgs([$qbankcminfo->context->id])
-            ->onlyMethods(['retrieve_file_content_from_ai_system', 'is_mimetype_supported_by_ai_system'])->getMock();
-        $questiongenerator->method('retrieve_file_content_from_ai_system')
-            // Only return 'content from file' once.
-            ->willReturnOnConsecutiveCalls('content from file', '');
-        // We have to fake the check if the external AI system supports the mimetype of the file we want to extract content from.
-        // This time we simulate an external AI system that does not support PDF.
-        // This will make the PDF being converted into images. So we're also testing the method convert_pdf_to_images here.
-        $questiongenerator->method('is_mimetype_supported_by_ai_system')->with('application/pdf')
-            ->willReturn(false);
+        $questiongenerator = new question_generator($qbankcminfo->context->id);
         $this->assertEquals('content from file', $questiongenerator->extract_content_from_pdf_or_image($file));
-        $cachedrecord = $DB->get_record('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()]);
-        $this->assertEquals('content from file', $cachedrecord->extractedcontent);
+    }
+
+    /**
+     * Tests that extraction failures are wrapped as questiongen_exception.
+     *
+     * @covers \qbank_questiongen\local\question_generator::extract_content_from_cm
+     */
+    public function test_extract_content_from_cm_wraps_extractor_exception(): void {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        $qbankcminfo = question_bank_helper::create_default_open_instance($course, 'testquestionbank');
+
+        $resourcegenerator = $this->getDataGenerator()->get_plugin_generator('mod_resource');
+        $resource = $resourcegenerator->create_instance(['course' => $course->id, 'name' => 'testresource']);
+        $context = context_module::instance($resource->cmid);
+        $fs = get_file_storage();
+        foreach ($fs->get_area_files($context->id, 'mod_resource', 'content') as $file) {
+            $file->delete();
+        }
+
+        $filerecord = [
+            'component' => 'mod_resource',
+            'filearea' => 'content',
+            'contextid' => $context->id,
+            'itemid' => 0,
+            'filepath' => '/',
+            'filename' => 'testpdf.pdf',
+        ];
+        $fs->create_file_from_string(
+            $filerecord,
+            file_get_contents($CFG->dirroot . '/question/bank/questiongen/tests/fixtures/testpdf.pdf')
+        );
+
+        $extractor = $this->createMock(\local_ai_content\document_extractor::class);
+        $extractor->method('is_file_supported')->willReturn(true);
+        $extractor->method('extract_text_from_file')
+            ->willThrowException(new \moodle_exception('error_pdfrenderingunavailable', 'local_ai_content'));
+        \core\di::set(\local_ai_content\document_extractor::class, $extractor);
+
+        $questiongenerator = new question_generator($qbankcminfo->context->id);
+        $this->expectException(questiongen_exception::class);
+        $this->expectExceptionMessage(get_string('error_pdfrenderingunavailable', 'local_ai_content'));
+        $questiongenerator->extract_content_from_cm(get_fast_modinfo($course)->get_cm($resource->cmid));
     }
 }

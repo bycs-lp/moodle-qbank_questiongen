@@ -17,13 +17,9 @@
 namespace qbank_questiongen\local;
 
 use cm_info;
-use assignfeedback_editpdf\pdf;
 use lesson;
-use local_ai_manager\ai_manager_utils;
-use local_ai_manager\manager;
 use qbank_questiongen\form\story_form;
 use question_bank;
-use setasign\Fpdi\PdfParser\PdfParserException;
 use stdClass;
 
 /**
@@ -35,11 +31,8 @@ use stdClass;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class question_generator {
-    /** @var \core\clock A clock object that is being dependency injected. */
-    private readonly \core\clock $clock;
-
-    /** @var string[] Supported mimetypes for converting into text content. */
-    const ITT_MIMETYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+    /** @var string[] Text mimetypes that can be read directly from file contents. */
+    const TEXT_MIMETYPES = ['text/plain', 'text/html', 'text/csv'];
 
     /**
      * Creates an instance of the question_generator.
@@ -48,7 +41,6 @@ class question_generator {
         /** @var int The id of the context the question_generator is called from. */
         private readonly int $contextid
     ) {
-        $this->clock = \core\di::get(\core\clock::class);
     }
 
     /**
@@ -202,18 +194,13 @@ class question_generator {
             $fs = get_file_storage();
             $files = $fs->get_area_files($context->id, 'mod_resource', 'content', 0, 'sortorder DESC, id ASC', false);
             $file = reset($files);
-            return in_array($file->get_mimetype(), self::get_supported_mimetypes());
+            if (empty($file)) {
+                return false;
+            }
+            $extractor = \core\di::get(\local_ai_content\document_extractor::class);
+            return $extractor->is_file_supported($file);
         }
         return false;
-    }
-
-    /**
-     * Returns the mimetypes that are supported for converting into text.
-     *
-     * @return string[] array of mimetypes that are supported for being converted into text
-     */
-    public static function get_supported_mimetypes(): array {
-        return ['text/plain', 'text/html', 'text/csv', 'application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
     }
 
     /**
@@ -240,12 +227,8 @@ class question_generator {
                 $fs = get_file_storage();
                 $files = $fs->get_area_files($context->id, 'mod_resource', 'content', 0, 'sortorder DESC, id ASC', false);
                 $file = reset($files);
-                if (!empty($file) && in_array($file->get_mimetype(), self::get_supported_mimetypes())) {
-                    if (in_array($file->get_mimetype(), self::ITT_MIMETYPES)) {
-                        $content = $this->extract_content_from_pdf_or_image($file);
-                    } else {
-                        $content = $file->get_content();
-                    }
+                if (!empty($file)) {
+                    $content = $this->extract_content_from_file($file);
                 }
                 break;
             case 'folder':
@@ -254,11 +237,10 @@ class question_generator {
                 $files = $fs->get_area_files($context->id, 'mod_folder', 'content', 0, 'id ASC', false);
                 $filecontents = [];
                 foreach ($files as $file) {
-                    if (!empty($file) && in_array($file->get_mimetype(), self::get_supported_mimetypes())) {
-                        if (in_array($file->get_mimetype(), self::ITT_MIMETYPES)) {
-                            $filecontents[] = trim($this->extract_content_from_pdf_or_image($file));
-                        } else {
-                            $filecontents[] = trim($file->get_content());
+                    if (!empty($file)) {
+                        $filecontent = trim($this->extract_content_from_file($file));
+                        if ($filecontent !== '') {
+                            $filecontents[] = $filecontent;
                         }
                     }
                 }
@@ -298,71 +280,41 @@ class question_generator {
     /**
      * Extracts content from pdf or image files.
      *
-     * This is being done by sending the file to an external AI system that extracts the text from the file.
+     * Delegates extraction to local_ai_content\document_extractor.
      *
      * @param \stored_file $file The file to send
      * @return string the extracted content as text
      */
     public function extract_content_from_pdf_or_image(\stored_file $file): string {
-        global $DB;
-        if ($record = $DB->get_record('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()])) {
-            $record->timelastaccessed = $this->clock->time();
-            $DB->update_record('qbank_questiongen_resource_cache', $record);
-            return $record->extractedcontent;
-        }
-
-        // For example 'application/pdf' is not supported by some AI systems.
-        if ($this->is_mimetype_supported_by_ai_system($file->get_mimetype())) {
-            $encodedimage = 'data:' . $file->get_mimetype() . ';base64,' . base64_encode($file->get_content());
-            $result = $this->retrieve_file_content_from_ai_system($encodedimage);
-            $this->store_to_record_cache($file, $result);
-            return $result;
-        } else if ($file->get_mimetype() === 'application/pdf') {
-            // Depending on what models/AI tools are configured, some of them do not support sending PDF files directly.
-            // So we have to convert each PDF page to an image and extract the text from the images one by one.
-            $content = '';
-
-            $encodedimages = $this->convert_pdf_to_images($file);
-            foreach ($encodedimages as $encodedimage) {
-                $content .= $this->retrieve_file_content_from_ai_system($encodedimage);
-            }
-            $this->store_to_record_cache($file, $content);
-            return $content;
-        } else {
-            // Not perfect to throw an exception here. We probably need some image format conversion here.
-            throw new \moodle_exception('Unsupported file type: ' . $file->get_mimetype());
-        }
+        $extractor = \core\di::get(\local_ai_content\document_extractor::class);
+        return $extractor->extract_text_from_file($file, $this->contextid, $file->get_userid() ?: null, 'qbank_questiongen');
     }
 
     /**
-     * Stores the content of a file into the record cache.
+     * Extract content from a file.
      *
-     * Extracting text from a file is pretty expensive. After an external LLM has done this successfully, we store the extracted
-     * text into a database table indexed by the contenthash of the file, so we can just use it for future uses.
+     * Extraction failures propagate to the caller.
      *
-     * @param \stored_file $file the file that we want to store the extracted content for
-     * @param string $extractedcontent the extracted content (usually generated by an external AI system)
+     * @param \stored_file $file The file to process.
+     * @return string The extracted content.
      */
-    public function store_to_record_cache(\stored_file $file, string $extractedcontent): void {
-        global $DB;
-        $time = $this->clock->time();
-        if ($currentrecord = $DB->get_record('qbank_questiongen_resource_cache', ['contenthash' => $file->get_contenthash()])) {
-            if ($currentrecord->extractedcontent !== $extractedcontent) {
-                $currentrecord->extractedcontent = $extractedcontent;
-            }
-            $currentrecord->timemodified = $time;
-            $currentrecord->timelastaccessed = $time;
-            $DB->update_record('qbank_questiongen_resource_cache', $currentrecord);
-            return;
+    private function extract_content_from_file(\stored_file $file): string {
+        if (in_array($file->get_mimetype(), self::TEXT_MIMETYPES)) {
+            return $file->get_content();
         }
 
-        $record = new stdClass();
-        $record->contenthash = $file->get_contenthash();
-        $record->extractedcontent = $extractedcontent;
-        $record->timemodified = $time;
-        $record->timecreated = $time;
-        $record->timelastaccessed = $time;
-        $DB->insert_record('qbank_questiongen_resource_cache', $record);
+        $extractor = \core\di::get(\local_ai_content\document_extractor::class);
+        try {
+            return $extractor->extract_text_from_file($file, $this->contextid, $file->get_userid() ?: null, 'qbank_questiongen');
+        } catch (\moodle_exception $exception) {
+            throw new questiongen_exception(
+                $exception->errorcode,
+                $exception->module,
+                $exception->link,
+                $exception->a,
+                $exception->debuginfo
+            );
+        }
     }
 
     /**
@@ -413,86 +365,5 @@ class question_generator {
             $result['errormessage'] = $result->get_errormessage();
         }
         return $return;
-    }
-
-    /**
-     * Wrapper for the call of an external AI system to extract content from a file.
-     *
-     * @param string $encodedimage The base64 encoded image to send to the external AI system
-     */
-    public function retrieve_file_content_from_ai_system(string $encodedimage): string {
-        $imageprompt =
-            'Return the text that is written on the image/document. Do not wrap any explanatory text around. '
-            . 'Return only the bare content.';
-        $aimanager = new manager('itt');
-        $requestoptions = [
-            'image' => $encodedimage,
-        ];
-
-        $result = $aimanager->perform_request($imageprompt, 'qbank_questiongen', $this->contextid, $requestoptions);
-        if ($result->get_code() !== 200) {
-            $errormessage = $result->get_errormessage();
-            if (debugging()) {
-                $errormessage .= ' Debugging info: ' . $result->get_debuginfo();
-            }
-            throw new \moodle_exception('Could not extract from PDF. Error: ' . $errormessage);
-        }
-        return $result->get_content();
-    }
-
-    /**
-     * Returns if the used external AI system supports the mimetype of a file to extract content from.
-     *
-     * @param string $mimetype The mimetype of the file we want to extract content from with the external AI system
-     * @return bool true if the mimetype is supported, false otherwise
-     * @throws questiongen_exception if the connector to the AI system is not properly set up
-     */
-    public function is_mimetype_supported_by_ai_system(string $mimetype): bool {
-        global $USER;
-        $aiconfig = ai_manager_utils::get_ai_config($USER, $this->contextid, null, ['itt']);
-        if (
-            $aiconfig['availability']['available'] !== ai_manager_utils::AVAILABILITY_AVAILABLE
-            || $aiconfig['purposes'][0]['available'] !== ai_manager_utils::AVAILABILITY_AVAILABLE
-        ) {
-            throw new questiongen_exception('errorimagetotextnotavailable', 'qbank_questiongen');
-        }
-        $purposeoptions = ai_manager_utils::get_available_purpose_options('itt');
-        if (empty($purposeoptions) || empty($purposeoptions['allowedmimetypes'])) {
-            throw new questiongen_exception('errorimagetotextnotavailable', 'qbank_questiongen');
-        }
-        return in_array($mimetype, $purposeoptions['allowedmimetypes']);
-    }
-
-    /**
-     * Converts a PDF into an array of images.
-     *
-     * @param \stored_file $file the PDF file to convert to images
-     * @return array array of base64 encoded images, one for each page of the PDF
-     * @throws questiongen_exception if the PDF is not supported by the library we're using
-     */
-    public function convert_pdf_to_images(\stored_file $file): array {
-        $tmpdir = \make_request_directory();
-        $fileextension = explode('/', $file->get_mimetype())[1];
-        $tmpfilename = 'qbank_questiongen_tmp_' . uniqid() . '.' . $fileextension;
-        file_put_contents($tmpdir . '/' . $tmpfilename, $file->get_content());
-        $pdf = new pdf();
-        $pdf->set_image_folder($tmpdir);
-        try {
-            $pdf->set_pdf($tmpdir . '/' . $tmpfilename);
-            $images = $pdf->get_images();
-        } catch (PdfParserException $exception) {
-            throw new \qbank_questiongen\local\questiongen_exception(
-                'errorpdfnotsupported',
-                'qbank_questiongen',
-                '',
-                $file->get_filename()
-            );
-        }
-        $imagearray = [];
-        foreach ($images as $image) {
-            $imagecontent = file_get_contents($tmpdir . '/' . $image);
-            $imagearray[] = 'data:' . mime_content_type($tmpdir . '/' . $image) . ';base64,' . base64_encode($imagecontent);
-        }
-        return $imagearray;
     }
 }
