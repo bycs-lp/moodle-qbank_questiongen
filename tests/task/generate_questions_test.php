@@ -69,7 +69,15 @@ final class generate_questions_test extends \advanced_testcase {
             foreach (['primer', 'instructions', 'example'] as $field) {
                 $data->{$field . $first->id} = $first->$field;
             }
+            $createdtime = 2000000000;
+            $this->mock_clock_with_frozen($createdtime);
             $ids = utils::store_questiongen_data($data);
+            foreach ($DB->get_records_list('qbank_questiongen', 'id', $ids) as $record) {
+                $this->assertEquals($createdtime, $record->timecreated);
+                $this->assertEquals($createdtime, $record->timemodified);
+            }
+            $modifiedtime = $createdtime + HOURSECS;
+            $this->mock_clock_with_frozen($modifiedtime);
             $ai = $this->getMockBuilder(question_generator::class)->setConstructorArgs([$qbank->context->id])
                 ->onlyMethods(['select_preset', 'generate_question'])->getMock();
             $ai->expects($this->exactly(count($selections)))->method('select_preset')
@@ -96,6 +104,10 @@ final class generate_questions_test extends \advanced_testcase {
             }
             $records = array_values($DB->get_records_list('qbank_questiongen', 'id', $ids, 'id'));
             $this->assertSame($statuses, array_column($records, 'success'), $scenario);
+            foreach ($records as $record) {
+                $this->assertEquals($createdtime, $record->timecreated);
+                $this->assertEquals($modifiedtime, $record->timemodified);
+            }
             $questionids = \question_bank::get_finder()->get_questions_from_categories([$category->id], null);
             $this->assertCount(count($types), $questionids, $scenario);
             $actualtypes = $questionids ? $DB->get_records_list('question', 'id', $questionids, '', 'id,qtype') : [];

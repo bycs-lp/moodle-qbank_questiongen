@@ -32,6 +32,7 @@ class generate_questions extends \core\task\adhoc_task {
     #[\Override]
     public function execute() {
         global $DB, $USER;
+        $clock = \core\di::get(\core\clock::class);
 
         try {
             $customdata = $this->get_custom_data();
@@ -122,7 +123,9 @@ class generate_questions extends \core\task\adhoc_task {
                         );
                     }
                     if (!$selected) {
-                        $DB->set_field('qbank_questiongen', 'success', '0', ['id' => $dbrecord->id]);
+                        $DB->update_record('qbank_questiongen', (object) [
+                            'id' => $dbrecord->id, 'success' => '0', 'timemodified' => $clock->time(),
+                        ]);
                         $this->progress->update(
                             $i,
                             $questionstocreatecount,
@@ -135,7 +138,7 @@ class generate_questions extends \core\task\adhoc_task {
                     $dbrecord->primer = $selected->primer;
                     $dbrecord->instructions = $selected->instructions;
                     $dbrecord->example = $selected->example;
-                    $dbrecord->timemodified = time();
+                    $dbrecord->timemodified = $clock->time();
                     $DB->update_record('qbank_questiongen', $dbrecord);
                     $dbrecord->pedagogy = $selection->pedagogy;
                     $expectedtype = $selected;
@@ -151,7 +154,7 @@ class generate_questions extends \core\task\adhoc_task {
                         // We do not retry here, because if the subsystem returns an error it's very likely that it's a general
                         // one. Retries are only meant to create slightly different questions in case of XML parsing fails.
                         $update->id = $dbrecord->id;
-                        $update->timemodified = time();
+                        $update->timemodified = $clock->time();
                         $update->success = 0;
                         $DB->update_record('qbank_questiongen', $update);
                         $this->progress->update_full(100, '');
@@ -160,7 +163,7 @@ class generate_questions extends \core\task\adhoc_task {
                     }
 
                     $update->id = $dbrecord->id;
-                    $update->timemodified = time();
+                    $update->timemodified = $clock->time();
                     $update->llmresponse = $question->text;
                     $DB->update_record('qbank_questiongen', $update);
 
@@ -179,7 +182,7 @@ class generate_questions extends \core\task\adhoc_task {
                         $update = new \stdClass();
                         $update->id = $dbrecord->id;
                         $update->tries = ++$dbrecord->tries;
-                        $update->timemodified = time();
+                        $update->timemodified = $clock->time();
                         $DB->update_record('qbank_questiongen', $update);
                     }
 
@@ -236,7 +239,7 @@ class generate_questions extends \core\task\adhoc_task {
                 foreach ($DB->get_records_list('qbank_questiongen', 'id', $questiongenids) as $record) {
                     if ((int) $record->userid === (int) $USER->id && (string) $record->success === '') {
                         $DB->update_record('qbank_questiongen', (object) [
-                            'id' => $record->id, 'success' => '0', 'timemodified' => time(),
+                            'id' => $record->id, 'success' => '0', 'timemodified' => $clock->time(),
                         ]);
                     }
                 }

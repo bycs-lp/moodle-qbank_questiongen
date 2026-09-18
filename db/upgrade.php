@@ -48,11 +48,9 @@ function xmldb_qbank_questiongen_upgrade(int $oldversion): bool {
         global $DB;
         $dbman = $DB->get_manager();
         $table = new xmldb_table('qbank_questiongen_preset');
-        foreach (['qtype', 'xmltype'] as $name) {
-            $field = new xmldb_field($name, XMLDB_TYPE_CHAR, '100');
-            if (!$dbman->field_exists($table, $field)) {
-                $dbman->add_field($table, $field);
-            }
+        $field = new xmldb_field('qtype', XMLDB_TYPE_CHAR, '100');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
         }
         $field = new xmldb_field('selectiondescription', XMLDB_TYPE_TEXT);
         if (!$dbman->field_exists($table, $field)) {

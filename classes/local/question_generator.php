@@ -462,7 +462,7 @@ class question_generator {
             'generatedquestiontext' => '',
             'errormessage' => '',
         ];
-        $manager = new \local_ai_manager\manager('questiongeneration');
+        $manager = $this->get_manager();
         $lastmessage = array_pop($messages);
         $result = $manager->perform_request(
             $lastmessage['message'],
@@ -476,5 +476,14 @@ class question_generator {
             $return['errormessage'] = $result->get_errormessage() ?: get_string('errorselectionprovider', 'qbank_questiongen');
         }
         return $return;
+    }
+
+    /**
+     * Create the manager for both question-generation requests.
+     *
+     * @return \local_ai_manager\manager The question-generation manager
+     */
+    protected function get_manager(): \local_ai_manager\manager {
+        return new \local_ai_manager\manager('questiongeneration');
     }
 }

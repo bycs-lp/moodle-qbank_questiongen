@@ -72,11 +72,11 @@ if ($preseteditform->is_cancelled()) {
     if (isset($data->id)) {
         $record->id = $data->id;
     }
-    $record->timemodified = time();
+    $record->timemodified = \core\di::get(\core\clock::class)->time();
     if (!empty($record->id)) {
         $DB->update_record('qbank_questiongen_preset', $record);
     } else {
-        $record->timecreated = time();
+        $record->timecreated = $record->timemodified;
         $DB->insert_record('qbank_questiongen_preset', $record);
     }
 

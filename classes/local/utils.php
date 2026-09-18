@@ -106,8 +106,8 @@ class utils {
         $dbrecord->aiidentifier = !empty($data->addidentifier) ? 1 : 0;
         $dbrecord->category = explode(',', $data->category)[0];
         $dbrecord->userid = $USER->id;
-        $dbrecord->timecreated = time();
-        $dbrecord->timemodified = time();
+        $dbrecord->timecreated = \core\di::get(\core\clock::class)->time();
+        $dbrecord->timemodified = $dbrecord->timecreated;
         $dbrecord->tries = 1;
         $dbrecord->selectionmode = $automatic ? 1 : 0;
 

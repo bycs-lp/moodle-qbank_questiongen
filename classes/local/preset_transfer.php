@@ -145,7 +145,7 @@ class preset_transfer {
                 $result->skipped++;
                 continue;
             }
-            $record->timecreated = time();
+            $record->timecreated = \core\di::get(\core\clock::class)->time();
             $record->timemodified = $record->timecreated;
             $DB->insert_record('qbank_questiongen_preset', $record);
             $fingerprints[$fingerprint] = true;
