@@ -30,6 +30,19 @@ require_once($CFG->libdir . '/formslib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class edit_preset_form extends \moodleform {
+    /** @var \stdClass Preset populated during successful validation. */
+    private \stdClass $validatedpreset;
+
+    /**
+     * Return the validated preset after get_data() succeeds.
+     *
+     * @return \stdClass
+     */
+    public function get_preset(): \stdClass {
+        // Return the derived qtype without parsing the XML again; controller updates must not mutate the retained result.
+        return clone $this->validatedpreset;
+    }
+
     #[\Override]
     public function definition() {
         $mform = &$this->_form;
@@ -53,24 +66,25 @@ class edit_preset_form extends \moodleform {
         $mform->addElement('textarea', 'example', get_string('example', 'qbank_questiongen'), $textareaparams);
         $mform->setType('example', PARAM_RAW);
 
+        $mform->addElement(
+            'textarea',
+            'selectiondescription',
+            get_string('selectiondescription', 'qbank_questiongen'),
+            ['rows' => 3, 'style' => 'width: 100%']
+        );
+        $mform->setType('selectiondescription', PARAM_TEXT);
+        $mform->addHelpButton('selectiondescription', 'selectiondescription', 'qbank_questiongen');
+
         $this->add_action_buttons();
     }
 
     #[\Override]
     public function validation($data, $files): array {
-        $errors = [];
-        if (empty(trim($data['name']))) {
-            $errors['name'] = get_string('errorformfieldempty', 'qbank_questiongen');
+        // Keep only editable fields and use the same limits and XML rules as JSON import.
+        $this->validatedpreset = new \stdClass();
+        foreach (['name', 'primer', 'instructions', 'example', 'selectiondescription'] as $field) {
+            $this->validatedpreset->$field = trim($data[$field] ?? '');
         }
-        if (empty(trim($data['primer']))) {
-            $errors['primer'] = get_string('errorformfieldempty', 'qbank_questiongen');
-        }
-        if (empty(trim($data['instructions']))) {
-            $errors['instructions'] = get_string('errorformfieldempty', 'qbank_questiongen');
-        }
-        if (trim(empty($data['example']))) {
-            $errors['example'] = get_string('errorformfieldempty', 'qbank_questiongen');
-        }
-        return $errors;
+        return \qbank_questiongen\local\preset_transfer::validate_preset($this->validatedpreset);
     }
 }

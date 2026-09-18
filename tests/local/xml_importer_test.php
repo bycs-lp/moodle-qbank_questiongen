@@ -28,9 +28,105 @@ use stdClass;
  * @copyright 2025 ISB Bayern
  * @author    Philipp Memmel
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @covers    \local_ai_manager\local\observers
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(xml_importer::class)]
+#[\PHPUnit\Framework\Attributes\Group('baseline')]
+#[\PHPUnit\Framework\Attributes\CoversClass(\qformat_xml::class)]
 final class xml_importer_test extends \advanced_testcase {
+    /**
+     * Round-trip release presets, the extended library and Moodle XML aliases.
+     */
+    public function test_extended_preset_library(): void {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/question/format/xml/format.php');
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        set_config('aiidentifier', '', 'qbank_questiongen');
+        set_config('aiidentifiertag', '', 'qbank_questiongen');
+        $course = $this->getDataGenerator()->create_course();
+        $bank = question_bank_helper::create_default_open_instance($course, 'presetlibrary');
+        question_get_top_category($bank->context->id, true);
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $library = json_decode(file_get_contents(__DIR__ . '/../../docs/presets-library.json'), false, 32, JSON_THROW_ON_ERROR);
+        $this->assertCount(21, $library->presets);
+        $presets = array_merge(json_decode(file_get_contents(__DIR__ . '/../../db/initial_presets.json')), $library->presets);
+        foreach ($library->presets as $preset) {
+            foreach (['matching' => 'match', 'cloze' => 'multianswer'] as $original => $alias) {
+                if (str_contains($preset->example, 'type="' . $original . '"')) {
+                    $copy = clone $preset;
+                    $copy->example = str_replace('type="' . $original . '"', 'type="' . $alias . '"', $copy->example);
+                    $presets[] = $copy;
+                }
+            }
+        }
+        foreach ($presets as $preset) {
+            $xml = $preset->example;
+            $this->assertSame('<?xml version="1.0" encoding="UTF-8"?>', strtok($xml, "\r\n"), $preset->name);
+            $xmltype = (string) simplexml_load_string($xml)->question['type'];
+            $qtype = ['matching' => 'match', 'cloze' => 'multianswer'][$xmltype] ?? $xmltype;
+            // The library includes optional plugins; verify installed types without requiring every type in lean CI sites.
+            if (!question_bank::is_qtype_installed($qtype)) {
+                continue;
+            }
+            $filecount = $DB->count_records('files');
+            $questioncount = $DB->count_records('question');
+            $decoded = preset_transfer::decode(preset_transfer::encode([$preset]));
+            $this->assertSame($qtype, $decoded[0]->qtype);
+            $this->assertSame($filecount, $DB->count_records('files'));
+            $this->assertSame($questioncount, $DB->count_records('question'));
+            $target = $generator->create_question_category(['contextid' => $bank->context->id]);
+            ob_start();
+            try {
+                $imported = xml_importer::parse_questions($target->id, (object) [
+                    'text' => $xml, 'expectedtype' => (object) ['qtype' => $qtype],
+                ], false);
+            } finally {
+                ob_end_clean();
+            }
+            $this->assertTrue($imported, $qtype);
+            $ids = question_bank::get_finder()->get_questions_from_categories([$target->id], null);
+            $this->assertCount(1, $ids, $qtype);
+            $this->assertSame($qtype, $DB->get_field('question', 'qtype', ['id' => reset($ids)]));
+        }
+    }
+
+    /**
+     * Reject malformed documents and unexpected types without writing questions or files.
+     */
+    public function test_validate_question(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $filecount = $DB->count_records('files');
+        $questioncount = $DB->count_records('question');
+        foreach (
+            [
+            '',
+            '<quiz/>',
+            '<quiz><question type="category"/></quiz>',
+            '<quiz><question type="description"/></quiz>',
+            '<quiz><question type="unknown"/></quiz>',
+            '<quiz><question type="essay"/><question type="essay"/></quiz>',
+            '<!DOCTYPE quiz [<!ENTITY content "unsafe">]><quiz><question type="essay"/></quiz>',
+            '<quiz><question type="essay"><image>old.png</image><image_base64>eA==</image_base64></question></quiz>',
+            ] as $xml
+        ) {
+            try {
+                xml_importer::validate_question($xml);
+                $this->fail('Invalid XML was accepted');
+            } catch (\invalid_parameter_exception $exception) {
+                $this->assertNotEmpty($exception->getMessage());
+            }
+            $this->assertFalse(xml_importer::parse_questions(0, (object) ['text' => $xml], false));
+        }
+        $presets = json_decode(file_get_contents(__DIR__ . '/../../db/initial_presets.json'));
+        $question = (object) ['text' => $presets[0]->example,
+            'expectedtype' => (object) ['qtype' => 'match']];
+        $this->assertFalse(xml_importer::parse_questions(0, $question, false));
+        $this->assertSame($filecount, $DB->count_records('files'));
+        $this->assertSame($questioncount, $DB->count_records('question'));
+    }
+
     /**
      * Tests the functionality that substitutes certain placeholders in a string.
      *
@@ -93,6 +189,54 @@ final class xml_importer_test extends \advanced_testcase {
         $tags = \core_tag_tag::get_item_tags('core_question', 'question', $question->id);
         $this->assertCount(1, $tags);
         $this->assertEquals('AI generated: French Revolution Cause', $question->name);
+    }
+
+    /**
+     * Imported AI HTML must be safe even when the question renderer disables cleaning.
+     */
+    public function test_import_untrusted_html(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        $bank = question_bank_helper::create_default_open_instance($course, 'security');
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $category = $generator->create_question_category(['contextid' => $bank->context->id]);
+        $payload = '<p>Safe <strong>content</strong></p><img src="x" onerror="alert(1)">'
+            . '<script>alert(2)</script><a href="javascript:alert(3)">Link</a>';
+        $response = new stdClass();
+        // Inspect stored content, not rendered output, so renderer cleaning cannot hide an unsafe import.
+        foreach (['html', 'moodle_auto_format', 'markdown'] as $format) {
+            $document = new \DOMDocument();
+            $document->load(__DIR__ . '/../fixtures/multichoice.xml', LIBXML_NONET);
+            foreach ((new \DOMXPath($document))->query('//questiontext|//generalfeedback|//feedback') as $field) {
+                assert($field instanceof \DOMElement);
+                $field->setAttribute('format', $format);
+                $text = $field->getElementsByTagName('text')->item(0);
+                $text->textContent = $payload;
+            }
+            $response->text = $document->saveXML();
+            $this->assertTrue(xml_importer::parse_questions($category->id, $response, false));
+            $record = $DB->get_record('question', ['id' => $DB->get_field_sql('SELECT MAX(id) FROM {question}')]);
+            $htmlfields = [$record->questiontext, $record->generalfeedback,
+                ...$DB->get_fieldset_select('question_answers', 'feedback', 'question = ?', [$record->id])];
+            foreach ($htmlfields as $html) {
+                $this->assertStringContainsString('<strong>content</strong>', $html);
+                $this->assertStringNotContainsString('onerror', $html);
+                $this->assertStringNotContainsString('<script', $html);
+                $this->assertStringNotContainsString('javascript:', $html);
+            }
+        }
+        $user = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user->id, $course->id, 'student');
+        $this->setUser($user);
+        $count = $DB->count_records('question');
+        try {
+            xml_importer::parse_questions($category->id, $response, false);
+            $this->fail('Question imported without the add capability');
+        } catch (\required_capability_exception $exception) {
+            $this->assertSame($count, $DB->count_records('question'));
+        }
     }
 
     /**

@@ -1,0 +1,13 @@
+{
+    "format": "qbank_questiongen_presets",
+    "version": 1,
+    "presets": [
+        {
+            "name": "Imported regression preset",
+            "primer": "Create one Moodle XML short answer question.",
+            "instructions": "Use {{currentlang}} and return only XML.",
+            "selectiondescription": "Recall a precise term.",
+            "example": "<quiz><question type=\"shortanswer\"><name><text>Water formula</text></name><questiontext format=\"html\"><text>What is the chemical formula of water?</text></questiontext><usecase>0</usecase><answer fraction=\"100\" format=\"plain_text\"><text>H2O</text><feedback format=\"plain_text\"><text>Correct.</text></feedback></answer></question></quiz>"
+        }
+    ]
+}

@@ -3,3 +3,13 @@
     text-overflow: inherit;
     white-space: break-spaces;
 }
+
+#page-question-bank-questiongen-presets .filepicker-filelist {
+    height: auto;
+    min-height: 14rem;
+}
+
+#page-question-bank-questiongen-presets .filepicker-container {
+    height: auto;
+    min-height: 12rem;
+}

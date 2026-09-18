@@ -29,6 +29,82 @@ use stdClass;
  */
 class xml_importer {
     /**
+     * Resolve a single question without writing to the question bank.
+     * Embedded files are excluded from type detection to avoid creating draft files.
+     *
+     * @param string $xml Moodle XML document
+     * @return stdClass Derived internal Moodle question type
+     * @throws \invalid_parameter_exception If the document cannot be used as a question preset
+     */
+    public static function validate_question(string $xml): stdClass {
+        global $CFG;
+        require_once($CFG->dirroot . '/question/engine/bank.php');
+        require_once($CFG->dirroot . '/question/format/xml/format.php');
+
+        if (strlen($xml) > 262144 || trim($xml) === '') {
+            throw new \invalid_parameter_exception('Invalid question XML size');
+        }
+        $previous = libxml_use_internal_errors(true);
+        try {
+            $document = new \DOMDocument();
+            // Do not fetch network resources or accept DTDs; the import contract is a self-contained quiz document.
+            if (!$document->loadXML($xml, LIBXML_NONET) || $document->doctype !== null) {
+                throw new \invalid_parameter_exception('Invalid question XML document');
+            }
+            $root = $document->documentElement;
+            if ($root->tagName !== 'quiz' || $root->namespaceURI) {
+                throw new \invalid_parameter_exception('Expected a quiz document');
+            }
+            $elements = [];
+            // Count direct child elements, ignoring formatting whitespace and comments around the single question.
+            foreach ($root->childNodes as $node) {
+                if ($node instanceof \DOMElement) {
+                    $elements[] = $node;
+                }
+            }
+            if (count($elements) !== 1 || $elements[0]->tagName !== 'question' || $elements[0]->namespaceURI) {
+                throw new \invalid_parameter_exception('Expected exactly one question');
+            }
+            $xmltype = $elements[0]->getAttribute('type');
+            if ($xmltype === '' || in_array($xmltype, ['category', 'description'])) {
+                throw new \invalid_parameter_exception('Unsupported question type');
+            }
+            // The legacy image path can create draft files while reading, so it is not accepted for validation.
+            if ($document->getElementsByTagName('image_base64')->length) {
+                throw new \invalid_parameter_exception('Legacy image fields are not supported');
+            }
+            // Remove embedded files from this parser copy only; snapshot the live node list before removing its nodes.
+            foreach (iterator_to_array($document->getElementsByTagName('file')) as $file) {
+                if ($file->getAttribute('encoding') !== 'base64' || base64_decode($file->textContent, true) === false) {
+                    throw new \invalid_parameter_exception('Invalid embedded file');
+                }
+                $file->parentNode->removeChild($file);
+            }
+            $format = new \qformat_xml();
+            // Core readers can print diagnostics; expose a field error instead of rendering uploaded XML or parser output.
+            ob_start();
+            try {
+                $questions = $format->readquestions([$document->saveXML()]);
+            } catch (\Throwable $exception) {
+                throw new \invalid_parameter_exception('Cannot read question XML');
+            } finally {
+                ob_end_clean();
+            }
+            if ($format->importerrors || !is_array($questions) || count($questions) !== 1) {
+                throw new \invalid_parameter_exception('Cannot read a single question');
+            }
+            $qtype = $questions[0]->qtype ?? '';
+            if (!\question_bank::is_qtype_installed($qtype) || in_array($qtype, ['category', 'description', 'missingtype'])) {
+                throw new \invalid_parameter_exception('Question type is not installed');
+            }
+            return (object) ['qtype' => $qtype];
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
+    }
+
+    /**
      * Parse the XML questions.
      *
      * @param int $categoryid the question category to import the question to
@@ -43,10 +119,50 @@ class xml_importer {
     ): bool {
         global $CFG, $DB;
 
+        try {
+            $actual = self::validate_question($llmresponse->text);
+            // Compare resolved qtypes rather than XML spellings, allowing Core aliases such as matching/match.
+            if (
+                isset($llmresponse->expectedtype) &&
+                $actual->qtype !== $llmresponse->expectedtype->qtype
+            ) {
+                return false;
+            }
+        } catch (\invalid_parameter_exception $exception) {
+            return false;
+        }
+
+        $category = $DB->get_record('question_categories', ['id' => $categoryid], '*', MUST_EXIST);
+        $context = \context::instance_by_id($category->contextid);
+        // Recheck permission at the write boundary, including calls that do not originate from the generation form.
+        require_capability('moodle/question:add', $context);
+        $document = new \DOMDocument();
+        $document->loadXML($llmresponse->text, LIBXML_NONET);
+        // XML validity does not make its HTML trusted; clean text before Core stores and later renders the question.
+        foreach ($document->getElementsByTagName('text') as $text) {
+            $parent = $text->parentNode;
+            assert($parent instanceof \DOMElement);
+            $format = $parent->getAttribute('format');
+            if ($format === 'plain_text') {
+                continue;
+            }
+            $content = $text->textContent;
+            if ($format === 'markdown') {
+                // Clean the rendered representation and update the format so it is not interpreted as Markdown again.
+                $content = format_text($content, FORMAT_MARKDOWN, [
+                    'context' => $context, 'filter' => false, 'noclean' => false, 'para' => false,
+                ]);
+                $parent->setAttribute('format', 'html');
+            }
+            $text->textContent = clean_text($content, FORMAT_HTML);
+        }
+        $llmresponse->text = $document->saveXML();
+
         // Eventually add a prefix to the question title. We have to do this in the XML before importing.
         $llmresponse->text = self::add_aiidentifiers($llmresponse->text, $addidentifier);
 
         $fileformat = 'xml';
+        // Core's importer expects a filename; use a Moodle-managed temporary directory, not a client-supplied path.
         $filedir = make_request_directory();
         $realfilename = uniqid() . "." . $fileformat;
         $importfile = $filedir . '/' . $realfilename;
@@ -63,12 +179,13 @@ class xml_importer {
         $qformat = new $classname();
 
         // Load data into class.
-        $category = $DB->get_record('question_categories', ['id' => $categoryid]);
         $qformat->setCategory($category);
-        $qformat->setContexts([\context_helper::instance_by_id($category->contextid)]);
+        $qformat->setContexts([$context]);
         $qformat->setFilename($importfile);
         $qformat->setRealfilename($realfilename);
         $qformat->setStoponerror(true);
+        // Do not copy question contents into the background task log through the importer's progress output.
+        $qformat->set_display_progress(false);
 
         // Do anything before that we need to.
         if (!$qformat->importpreprocess()) {

@@ -31,7 +31,8 @@ class generate_questions extends \core\task\adhoc_task {
 
     #[\Override]
     public function execute() {
-        global $DB;
+        global $DB, $USER;
+        $clock = \core\di::get(\core\clock::class);
 
         try {
             $customdata = $this->get_custom_data();
@@ -45,6 +46,24 @@ class generate_questions extends \core\task\adhoc_task {
                 throw new \moodle_exception('errornogenerateentriesfound', 'qbank_questiongen');
             }
             $questionstocreatecount = count($questiongenrecords);
+            $selection = null;
+            // Check every record before reading course content or calling AI; permissions may have changed since submission.
+            foreach ($questiongenrecords as $record) {
+                if ((int) $record->userid !== (int) $USER->id) {
+                    throw new \required_capability_exception(
+                        \context_system::instance(),
+                        'moodle/question:add',
+                        'nopermissions',
+                        ''
+                    );
+                }
+                $category = $DB->get_record('question_categories', ['id' => $record->category], '*', MUST_EXIST);
+                require_capability('moodle/question:add', \context::instance_by_id($category->contextid));
+                // One record holds the shared snapshot; load it once but continue checking ownership of the whole batch.
+                if ($selection === null && !empty($record->selectiondata)) {
+                    $selection = json_decode($record->selectiondata, false, 512, JSON_THROW_ON_ERROR);
+                }
+            }
             $this->progress->update(
                 0,
                 $questionstocreatecount,
@@ -57,7 +76,7 @@ class generate_questions extends \core\task\adhoc_task {
 
             // Before creating questions we need to check, if we need to generate the story from the course content first.
             if (property_exists($customdata, 'courseactivities') && !empty($customdata->courseactivities)) {
-                $questiongenerator = new question_generator($customdata->contextid);
+                $questiongenerator = $this->get_generator($customdata->contextid);
                 $story = $questiongenerator->create_story_from_cms($customdata->courseactivities);
 
                 foreach ($questiongenrecords as $dbrecord) {
@@ -75,37 +94,88 @@ class generate_questions extends \core\task\adhoc_task {
             mtrace("[qbank_questiongen] Creating Questions with AI...\n");
 
             $i = 1;
-            $maxtries = get_config('qbank_questiongen', 'numoftries');
             foreach ($questiongenids as $questiongenid) {
                 $created = false;
                 $error = ''; // Error message.
                 $update = new \stdClass();
 
-                $dbrecord = $DB->get_record('qbank_questiongen', ['id' => $questiongenid]);
+                $dbrecord = $DB->get_record('qbank_questiongen', ['id' => $questiongenid], '*', MUST_EXIST);
+                if ((string) $dbrecord->success === '1') {
+                    $i++;
+                    continue;
+                }
+                $questiongenerator = $this->get_generator($customdata->contextid);
+                $expectedtype = null;
+                if (!empty($dbrecord->selectionmode)) {
+                    if (empty($selection)) {
+                        throw new \qbank_questiongen\local\questiongen_exception('errorselectioncatalogue', 'qbank_questiongen');
+                    }
+                    $catalogue = (array) $selection->catalogue;
+                    // Reuse a stored choice from the immutable snapshot rather than consulting today's preset table.
+                    $selected = $dbrecord->selectedpresetid ? ($catalogue[$dbrecord->selectedpresetid] ?? null) : null;
+                    if (!$selected) {
+                        $this->progress->update(
+                            $i - 1,
+                            $questionstocreatecount,
+                            get_string('selectingpreset', 'qbank_questiongen', $i)
+                        );
+                        $selected = $questiongenerator->select_preset(
+                            $dbrecord,
+                            $selection,
+                            $customdata->sendexistingquestionsascontext
+                        );
+                    }
+                    if (!$selected) {
+                        // Invalid selection output fails only this question; the next question may still be generated.
+                        $DB->update_record('qbank_questiongen', (object) [
+                            'id' => $dbrecord->id, 'success' => '0', 'timemodified' => $clock->time(),
+                        ]);
+                        $this->progress->update(
+                            $i,
+                            $questionstocreatecount,
+                            get_string('errorselectionresponse', 'qbank_questiongen')
+                        );
+                        $i++;
+                        continue;
+                    }
+                    // Persist the chosen prompts before generation so XML retries cannot change the selected preset.
+                    $dbrecord->selectedpresetid = $selected->id;
+                    $dbrecord->primer = $selected->primer;
+                    $dbrecord->instructions = $selected->instructions;
+                    $dbrecord->example = $selected->example;
+                    $dbrecord->timemodified = $clock->time();
+                    $DB->update_record('qbank_questiongen', $dbrecord);
+                    $dbrecord->pedagogy = $selection->pedagogy;
+                    $expectedtype = $selected;
+                }
+                $maxtries = max(1, (int) $dbrecord->numoftries);
                 mtrace("[qbank_questiongen] Creating Question $i ...\n");
 
+                // The tries counter starts at one and persists failures; this loop retries XML generation, not preset selection.
                 while (!$created && $dbrecord->tries <= $maxtries) {
                     // Get questions from AI API.
-                    $questiongenerator = new question_generator($customdata->contextid);
                     $question = $questiongenerator->generate_question($dbrecord, $customdata->sendexistingquestionsascontext);
                     if (!is_object($question)) {
                         // An error occurred.
                         // We do not retry here, because if the subsystem returns an error it's very likely that it's a general
                         // one. Retries are only meant to create slightly different questions in case of XML parsing fails.
                         $update->id = $dbrecord->id;
-                        $update->datemodified = time();
+                        $update->timemodified = $clock->time();
                         $update->success = 0;
                         $DB->update_record('qbank_questiongen', $update);
                         $this->progress->update_full(100, '');
-                        $this->progress->error($question);
+                        $this->progress->error(get_string('errorselectionprovider', 'qbank_questiongen'));
                         return;
                     }
 
                     $update->id = $dbrecord->id;
-                    $update->datemodified = time();
+                    $update->timemodified = $clock->time();
                     $update->llmresponse = $question->text;
                     $DB->update_record('qbank_questiongen', $update);
 
+                    if ($expectedtype) {
+                        $question->expectedtype = $expectedtype;
+                    }
                     $created = \qbank_questiongen\local\xml_importer::parse_questions(
                         $dbrecord->category,
                         $question,
@@ -117,8 +187,8 @@ class generate_questions extends \core\task\adhoc_task {
                         // Insert error info to DB.
                         $update = new \stdClass();
                         $update->id = $dbrecord->id;
-                        $update->tries = $dbrecord->tries++;
-                        $update->timemodified = time();
+                        $update->tries = ++$dbrecord->tries;
+                        $update->timemodified = $clock->time();
                         $DB->update_record('qbank_questiongen', $update);
                     }
 
@@ -160,25 +230,39 @@ class generate_questions extends \core\task\adhoc_task {
                     )
                 );
             }
-        } catch (\Exception $exception) {
-            set_debugging(DEBUG_DEVELOPER, true);
+        } catch (\Throwable $exception) {
+            // Progress is user-facing: keep provider details and source content out of messages and task diagnostics.
             $usererrormessage = get_string('errorcreatingquestionscritical', 'qbank_questiongen');
-            if ($exception instanceof \qbank_questiongen\local\questiongen_exception) {
-                // If we have a questiongen_exception, we overwrite the user-faced message with the one of
-                // the questiongen_exception.
-                $usererrormessage = $exception->getMessage();
-            }
             mtrace('Exception thrown during task. Task will not be requeued. This is just for debugging purposes.');
-            mtrace('Exception message: ' . $exception->getMessage());
-            mtrace('Exception stack trace:');
-            mtrace($exception->getTraceAsString());
+            mtrace('Question generation stopped: ' . get_class($exception));
             if ($this->progress->get_percent() === 0.0) {
                 // If no progress has been made yet, set it to 100% so it's clear that the process is done and the user can see the
                 // red color signaling an error.
                 $this->progress->update_full(100, '');
             }
             $this->progress->error($usererrormessage);
+        } finally {
+            // An early return must not leave owned requests pending; preserve completed results and foreign records.
+            if (!empty($questiongenids)) {
+                foreach ($DB->get_records_list('qbank_questiongen', 'id', $questiongenids) as $record) {
+                    if ((int) $record->userid === (int) $USER->id && (string) $record->success === '') {
+                        $DB->update_record('qbank_questiongen', (object) [
+                            'id' => $record->id, 'success' => '0', 'timemodified' => $clock->time(),
+                        ]);
+                    }
+                }
+            }
         }
+    }
+
+    /**
+     * Create the generator for this task's context.
+     *
+     * @param int $contextid Request context
+     * @return question_generator
+     */
+    protected function get_generator(int $contextid): question_generator {
+        return new question_generator($contextid);
     }
 
     /**

@@ -101,8 +101,15 @@ if ($mform->is_cancelled() && empty($disablederrormessage)) {
         $courseid = required_param('courseid', PARAM_INT);
     }
 
-    $questiongenids = \qbank_questiongen\local\utils::store_questiongen_data($data);
+    // Use the snapshot already validated by get_data(), rather than rebuilding candidates after form validation.
+    $selection = $mform->get_selection();
+    [$categoryid] = explode(',', $data->category);
+    $targetcategory = $DB->get_record('question_categories', ['id' => $categoryid], '*', MUST_EXIST);
+    // Authorise the actual selected category, which need not be the page's initial category.
+    require_capability('moodle/question:add', context::instance_by_id($targetcategory->contextid));
+    $questiongenids = \qbank_questiongen\local\utils::store_questiongen_data($data, $selection);
 
+    // Queue only IDs and processing options; prompt content and the catalogue remain in the plugin's request records.
     $customdata = [
         'contextid' => \context_module::instance($cm->id)->id,
         'sendexistingquestionsascontext' => !empty($data->sendexistingquestionsascontext),
@@ -169,7 +176,7 @@ if ($mform->is_cancelled() && empty($disablederrormessage)) {
 } else {
     if ($disablederrormessage) {
         echo $OUTPUT->header();
-        echo html_writer::div($disablederrormessage, 'alert alert-warning');
+        echo html_writer::div(clean_text($disablederrormessage, FORMAT_HTML), 'alert alert-warning');
     } else {
         echo $OUTPUT->header();
         $renderer = $PAGE->get_renderer('core_question', 'bank');

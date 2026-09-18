@@ -30,15 +30,78 @@ use stdClass;
  */
 class utils {
     /**
+     * Read validated presets whose question types are currently installed.
+     *
+     * @param array|null $presets Already loaded preset records
+     * @return array Preset snapshots indexed by ID
+     */
+    public static function get_preset_catalogue(?array $presets = null): array {
+        global $DB, $CFG;
+        require_once($CFG->dirroot . '/question/engine/bank.php');
+        $catalogue = [];
+        // XML was validated when saved; catalogue reads only check stored metadata and current plugin availability.
+        foreach ($presets ?? $DB->get_records('qbank_questiongen_preset', null, 'name, id') as $preset) {
+            if (empty($preset->qtype) || !\question_bank::is_qtype_installed($preset->qtype)) {
+                continue;
+            }
+            // Resolve language placeholders without changing records that the caller may still need unmodified.
+            $preset = clone $preset;
+            $preset->primer = self::filter_prompts($preset->primer);
+            $preset->instructions = self::filter_prompts($preset->instructions);
+            $preset->selectiondescription = self::filter_prompts($preset->selectiondescription ?: $preset->instructions);
+            $catalogue[$preset->id] = $preset;
+        }
+        return $catalogue;
+    }
+
+    /**
+     * Prepare immutable automatic-selection data in the submitting user's language.
+     *
+     * @param stdClass $data Submitted form data
+     * @param array|null $catalogue Catalogue already loaded for this request
+     * @return stdClass Task snapshot
+     */
+    public static function prepare_selection(stdClass $data, ?array $catalogue = null): stdClass {
+        $pedagogy = trim($data->pedagogy ?? '');
+        if (\core_text::strlen($pedagogy) > 4000) {
+            throw new questiongen_exception('errortexttoolong', 'qbank_questiongen', '', 4000);
+        }
+        $qtypes = (array) ($data->qtypes ?? []);
+        $catalogue ??= self::get_preset_catalogue();
+        // Reject stale or unknown restrictions before filtering; an empty explicit selection means all available types.
+        if (array_diff($qtypes, array_column($catalogue, 'qtype'))) {
+            throw new \invalid_parameter_exception('Invalid question type filter');
+        }
+        if ($qtypes) {
+            $catalogue = array_filter($catalogue, fn($preset) => in_array($preset->qtype, $qtypes, true));
+        }
+        if (!$catalogue) {
+            throw new \invalid_parameter_exception('No suitable presets');
+        }
+        // Freeze candidates and guidance for this batch; later administrative changes must not alter queued requests.
+        $snapshot = (object) ['catalogue' => $catalogue, 'pedagogy' => $pedagogy, 'qtypes' => $qtypes];
+        if (strlen(json_encode($snapshot, JSON_THROW_ON_ERROR)) > 1048576) {
+            throw new \invalid_parameter_exception('Preset catalogue is too large');
+        }
+        return $snapshot;
+    }
+
+    /**
      * Stores the data from the story_form.php form in the qbank_questiongen table.
      *
      * @param stdClass $data the data submitted by the form
+     * @param stdClass|null $selection Validated selection snapshot, stored once per batch
      * @return array the questiongen ids of the records that have been inserted into the DB
      */
-    public static function store_questiongen_data(stdClass $data): array {
+    public static function store_questiongen_data(stdClass $data, ?stdClass $selection = null): array {
         global $DB, $USER;
         // ID of the selected preset.
-        $preset = $data->preset;
+        $preset = $data->preset ?? 0;
+        $automatic = !empty($data->selectionmode);
+        if ($automatic && $selection === null) {
+            $selection = self::prepare_selection($data);
+        }
+        $transaction = $DB->start_delegated_transaction();
 
         // Create the DB entry.
         $dbrecord = new \stdClass();
@@ -47,9 +110,10 @@ class utils {
         $dbrecord->aiidentifier = !empty($data->addidentifier) ? 1 : 0;
         $dbrecord->category = explode(',', $data->category)[0];
         $dbrecord->userid = $USER->id;
-        $dbrecord->timecreated = time();
-        $dbrecord->timemodified = time();
+        $dbrecord->timecreated = \core\di::get(\core\clock::class)->time();
+        $dbrecord->timemodified = $dbrecord->timecreated;
         $dbrecord->tries = 1;
+        $dbrecord->selectionmode = $automatic ? 1 : 0;
 
         if (intval($data->mode) === story_form::QUESTIONGEN_MODE_TOPIC) {
             $dbrecord->story = self::filter_prompts($data->topic);
@@ -63,14 +127,18 @@ class utils {
 
         $dbrecord->llmresponse = '';
         $dbrecord->success = '';
-        $dbrecord->primer = self::filter_prompts($data->{'primer' . $preset});
-        $dbrecord->instructions = self::filter_prompts($data->{'instructions' . $preset});
-        $dbrecord->example = $data->{'example' . $preset};
+        // Automatic mode fills these fields only after choosing a preset; fixed mode retains the submitted prompt edits.
+        $dbrecord->primer = $automatic ? '' : self::filter_prompts($data->{'primer' . $preset});
+        $dbrecord->instructions = $automatic ? '' : self::filter_prompts($data->{'instructions' . $preset});
+        $dbrecord->example = $automatic ? '' : $data->{'example' . $preset};
+        $dbrecord->selectedpresetid = $automatic ? null : $preset;
 
         $i = 0;
         $questiongenids = [];
         while ($i < $data->numofquestions) {
             $dbrecord->uniqid = uniqid($USER->id, true);
+            // Store the shared snapshot once, in plugin data rather than task customdata that Core may log.
+            $dbrecord->selectiondata = $i === 0 && $selection ? json_encode($selection, JSON_THROW_ON_ERROR) : null;
 
             $insertedid = $DB->insert_record('qbank_questiongen', $dbrecord);
             if ($insertedid === 0) {
@@ -80,6 +148,7 @@ class utils {
 
             $i++;
         }
+        $transaction->allow_commit();
         return $questiongenids;
     }
 

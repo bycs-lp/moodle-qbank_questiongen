@@ -68,17 +68,15 @@ $preseteditform = new \qbank_questiongen\form\edit_preset_form($actionurl, $opti
 if ($preseteditform->is_cancelled()) {
     redirect($returnurl);
 } else if ($data = $preseteditform->get_data()) {
-    $record = new stdClass();
+    $record = $preseteditform->get_preset();
     if (isset($data->id)) {
         $record->id = $data->id;
     }
-    $record->name = trim($data->name);
-    $record->primer = trim($data->primer);
-    $record->instructions = trim($data->instructions);
-    $record->example = trim($data->example);
+    $record->timemodified = \core\di::get(\core\clock::class)->time();
     if (!empty($record->id)) {
         $DB->update_record('qbank_questiongen_preset', $record);
     } else {
+        $record->timecreated = $record->timemodified;
         $DB->insert_record('qbank_questiongen_preset', $record);
     }
 
@@ -92,6 +90,7 @@ if ($preseteditform->is_cancelled()) {
         $data->primer = $record->primer;
         $data->instructions = $record->instructions;
         $data->example = $record->example;
+        $data->selectiondescription = $record->selectiondescription;
         $preseteditform->set_data($data);
     }
     echo $OUTPUT->header();
