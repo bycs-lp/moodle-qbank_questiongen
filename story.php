@@ -173,7 +173,7 @@ if ($mform->is_cancelled() && empty($disablederrormessage)) {
 } else {
     if ($disablederrormessage) {
         echo $OUTPUT->header();
-        echo html_writer::div($disablederrormessage, 'alert alert-warning');
+        echo html_writer::div(clean_text($disablederrormessage, FORMAT_HTML), 'alert alert-warning');
     } else {
         echo $OUTPUT->header();
         $renderer = $PAGE->get_renderer('core_question', 'bank');

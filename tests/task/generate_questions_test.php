@@ -102,6 +102,9 @@ final class generate_questions_test extends \advanced_testcase {
             $this->assertEqualsCanonicalizing($types, array_column($actualtypes, 'qtype'), $scenario);
             $this->assertFalse($task->retry_until_success());
             $this->assertStringNotContainsString('Compare concepts', $task->get_custom_data_as_string());
+            foreach ($DB->get_records('stored_progress') as $progress) {
+                $this->assertStringNotContainsString('Provider unavailable', $progress->message ?? '');
+            }
             if ($scenario === 'mixed') {
                 $this->assertEquals([$first->id, null, $second->id], array_column($records, 'selectedpresetid'));
                 $this->assertEquals(2, $records[0]->tries);
@@ -110,5 +113,48 @@ final class generate_questions_test extends \advanced_testcase {
                 $this->assertNull($records[2]->selectiondata);
             }
         }
+    }
+
+    /**
+     * Reject foreign and no-longer-authorised requests before reading any source content.
+     */
+    public function test_batch_permissions(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        $bank = \core_question\local\bank\question_bank_helper::create_default_open_instance($course, 'security');
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $category = $generator->create_question_category(['contextid' => $bank->context->id]);
+        $page = $this->getDataGenerator()->create_module('page', ['course' => $course->id]);
+        $user = $this->getDataGenerator()->create_user();
+        $otheruser = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user->id, $course->id, 'student');
+        $preset = array_values(utils::get_preset_catalogue())[0];
+        $data = (object) ['mode' => 3, 'category' => $category->id . ',' . $bank->context->id,
+            'numofquestions' => 1, 'preset' => $preset->id, 'selectionmode' => 0];
+        foreach (['primer', 'instructions', 'example'] as $field) {
+            $data->{$field . $preset->id} = $preset->$field;
+        }
+        foreach ([$otheruser, $user] as $owner) {
+            $this->setUser($owner);
+            $ids = utils::store_questiongen_data($data);
+            $this->setUser($user);
+            $task = $this->getMockBuilder(generate_questions::class)->onlyMethods(['get_generator'])->getMock();
+            $task->expects($this->never())->method('get_generator');
+            $task->set_id($ids[0]);
+            $task->set_custom_data(['questiongenids' => $ids, 'contextid' => $bank->context->id,
+                'courseactivities' => [$page->cmid], 'sendexistingquestionsascontext' => false]);
+            ob_start();
+            try {
+                $task->execute();
+            } finally {
+                ob_end_clean();
+            }
+            $record = $DB->get_record('qbank_questiongen', ['id' => $ids[0]], '*', MUST_EXIST);
+            $this->assertSame('', $record->story);
+            $this->assertSame($owner->id === $user->id ? '0' : '', $record->success);
+        }
+        $this->assertFalse($DB->record_exists('question_bank_entries', ['questioncategoryid' => $category->id]));
     }
 }

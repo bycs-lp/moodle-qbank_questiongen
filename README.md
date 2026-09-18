@@ -59,6 +59,15 @@ Imports accept up to 100 presets and 8 MiB per JSON file; exports exceeding thes
 
 An optional [21-type preset library](docs/presets-library.json) is included, with [coverage, prerequisites and provenance](docs/presets-library.md). It is not installed automatically on other sites: importing the complete library requires its additional question type plugins. Export individual compatible presets when moving to a site with fewer plugins.
 
+## Security
+
+- Preset administration requires the system-level `qbank/questiongen:manage` capability. Generation requires `moodle/question:add` in the target category, checked again before background processing and at import. Form submissions and administrative actions retain session-key validation.
+- Existing-question context includes only questions the requesting user can view (`viewall`, or `viewmine` for their own questions).
+- Source activities must remain accessible in the request's course. Module read capabilities are enforced and hidden book chapters require `mod/book:viewhiddenchapters`. Full lesson extraction requires `mod/lesson:manage`, because reading every page is not equivalent to following a learner's restricted lesson path.
+- Source files are read through the File API in their source module context. AI extraction uses the requesting user's identity, not the file owner's quota or permissions. Generated question files are imported by Moodle into the authorised target category context.
+- Generated XML text fields are cleaned with Moodle's HTML APIs before import. Markdown fields are converted to cleaned HTML; plain-text fields keep their format. XML structure/type validation is not treated as HTML sanitisation. These controls apply to new imports, not previously generated questions.
+- Progress messages contain fixed localised status/error text, not raw provider errors or source content.
+
 ## Care ##
 Question generation, especially with substantial content, can use many tokens. Selection and generation share the AI manager's `questiongeneration` quota: normally two requests per question, or one when only one preset is allowed, plus any retries. The quota is not reserved for the whole batch; it may be exhausted after selection and before generation. Monitor token costs separately from request counts.
 

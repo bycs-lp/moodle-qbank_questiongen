@@ -191,6 +191,53 @@ final class xml_importer_test extends \advanced_testcase {
     }
 
     /**
+     * Imported AI HTML must be safe even when the question renderer disables cleaning.
+     */
+    public function test_import_untrusted_html(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        $bank = question_bank_helper::create_default_open_instance($course, 'security');
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $category = $generator->create_question_category(['contextid' => $bank->context->id]);
+        $payload = '<p>Safe <strong>content</strong></p><img src="x" onerror="alert(1)">'
+            . '<script>alert(2)</script><a href="javascript:alert(3)">Link</a>';
+        $response = new stdClass();
+        foreach (['html', 'moodle_auto_format', 'markdown'] as $format) {
+            $document = new \DOMDocument();
+            $document->load(__DIR__ . '/../fixtures/multichoice.xml', LIBXML_NONET);
+            foreach ((new \DOMXPath($document))->query('//questiontext|//generalfeedback|//feedback') as $field) {
+                assert($field instanceof \DOMElement);
+                $field->setAttribute('format', $format);
+                $text = $field->getElementsByTagName('text')->item(0);
+                $text->textContent = $payload;
+            }
+            $response->text = $document->saveXML();
+            $this->assertTrue(xml_importer::parse_questions($category->id, $response, false));
+            $record = $DB->get_record('question', ['id' => $DB->get_field_sql('SELECT MAX(id) FROM {question}')]);
+            $htmlfields = [$record->questiontext, $record->generalfeedback,
+                ...$DB->get_fieldset_select('question_answers', 'feedback', 'question = ?', [$record->id])];
+            foreach ($htmlfields as $html) {
+                $this->assertStringContainsString('<strong>content</strong>', $html);
+                $this->assertStringNotContainsString('onerror', $html);
+                $this->assertStringNotContainsString('<script', $html);
+                $this->assertStringNotContainsString('javascript:', $html);
+            }
+        }
+        $user = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user->id, $course->id, 'student');
+        $this->setUser($user);
+        $count = $DB->count_records('question');
+        try {
+            xml_importer::parse_questions($category->id, $response, false);
+            $this->fail('Question imported without the add capability');
+        } catch (\required_capability_exception $exception) {
+            $this->assertSame($count, $DB->count_records('question'));
+        }
+    }
+
+    /**
      * Helper function importing a fixture question and returns the imported question.
      *
      * @param int $qcatid The question category id to which the question should be imported

@@ -126,6 +126,29 @@ class xml_importer {
             return false;
         }
 
+        $category = $DB->get_record('question_categories', ['id' => $categoryid], '*', MUST_EXIST);
+        $context = \context::instance_by_id($category->contextid);
+        require_capability('moodle/question:add', $context);
+        $document = new \DOMDocument();
+        $document->loadXML($llmresponse->text, LIBXML_NONET);
+        foreach ($document->getElementsByTagName('text') as $text) {
+            $parent = $text->parentNode;
+            assert($parent instanceof \DOMElement);
+            $format = $parent->getAttribute('format');
+            if ($format === 'plain_text') {
+                continue;
+            }
+            $content = $text->textContent;
+            if ($format === 'markdown') {
+                $content = format_text($content, FORMAT_MARKDOWN, [
+                    'context' => $context, 'filter' => false, 'noclean' => false, 'para' => false,
+                ]);
+                $parent->setAttribute('format', 'html');
+            }
+            $text->textContent = clean_text($content, FORMAT_HTML);
+        }
+        $llmresponse->text = $document->saveXML();
+
         // Eventually add a prefix to the question title. We have to do this in the XML before importing.
         $llmresponse->text = self::add_aiidentifiers($llmresponse->text, $addidentifier);
 
@@ -146,9 +169,8 @@ class xml_importer {
         $qformat = new $classname();
 
         // Load data into class.
-        $category = $DB->get_record('question_categories', ['id' => $categoryid]);
         $qformat->setCategory($category);
-        $qformat->setContexts([\context_helper::instance_by_id($category->contextid)]);
+        $qformat->setContexts([$context]);
         $qformat->setFilename($importfile);
         $qformat->setRealfilename($realfilename);
         $qformat->setStoponerror(true);

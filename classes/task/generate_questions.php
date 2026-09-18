@@ -47,12 +47,18 @@ class generate_questions extends \core\task\adhoc_task {
             $questionstocreatecount = count($questiongenrecords);
             $selection = null;
             foreach ($questiongenrecords as $record) {
-                if (!empty($record->selectiondata)) {
-                    if ((int) $record->userid !== (int) $USER->id) {
-                        throw new \qbank_questiongen\local\questiongen_exception('errorselectioncatalogue', 'qbank_questiongen');
-                    }
+                if ((int) $record->userid !== (int) $USER->id) {
+                    throw new \required_capability_exception(
+                        \context_system::instance(),
+                        'moodle/question:add',
+                        'nopermissions',
+                        ''
+                    );
+                }
+                $category = $DB->get_record('question_categories', ['id' => $record->category], '*', MUST_EXIST);
+                require_capability('moodle/question:add', \context::instance_by_id($category->contextid));
+                if ($selection === null && !empty($record->selectiondata)) {
                     $selection = json_decode($record->selectiondata, false, 512, JSON_THROW_ON_ERROR);
-                    break;
                 }
             }
             $this->progress->update(
@@ -91,16 +97,6 @@ class generate_questions extends \core\task\adhoc_task {
                 $update = new \stdClass();
 
                 $dbrecord = $DB->get_record('qbank_questiongen', ['id' => $questiongenid], '*', MUST_EXIST);
-                if ((int) $dbrecord->userid !== (int) $USER->id) {
-                    throw new \required_capability_exception(
-                        \context_system::instance(),
-                        'moodle/question:add',
-                        'nopermissions',
-                        ''
-                    );
-                }
-                $category = $DB->get_record('question_categories', ['id' => $dbrecord->category], '*', MUST_EXIST);
-                require_capability('moodle/question:add', \context::instance_by_id($category->contextid));
                 if ((string) $dbrecord->success === '1') {
                     $i++;
                     continue;
@@ -159,7 +155,7 @@ class generate_questions extends \core\task\adhoc_task {
                         $update->success = 0;
                         $DB->update_record('qbank_questiongen', $update);
                         $this->progress->update_full(100, '');
-                        $this->progress->error($question);
+                        $this->progress->error(get_string('errorselectionprovider', 'qbank_questiongen'));
                         return;
                     }
 
@@ -227,11 +223,6 @@ class generate_questions extends \core\task\adhoc_task {
             }
         } catch (\Throwable $exception) {
             $usererrormessage = get_string('errorcreatingquestionscritical', 'qbank_questiongen');
-            if ($exception instanceof \qbank_questiongen\local\questiongen_exception) {
-                // If we have a questiongen_exception, we overwrite the user-faced message with the one of
-                // the questiongen_exception.
-                $usererrormessage = $exception->getMessage();
-            }
             mtrace('Exception thrown during task. Task will not be requeued. This is just for debugging purposes.');
             mtrace('Question generation stopped: ' . get_class($exception));
             if ($this->progress->get_percent() === 0.0) {

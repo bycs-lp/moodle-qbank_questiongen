@@ -26,6 +26,7 @@
 require(__DIR__ . '/../../../config.php');
 defined('MOODLE_INTERNAL') || die();
 require_login();
+require_capability('qbank/questiongen:manage', context_system::instance());
 
 $PAGE->set_context(context_system::instance());
 $PAGE->set_heading(get_string('pluginname', 'qbank_questiongen'));

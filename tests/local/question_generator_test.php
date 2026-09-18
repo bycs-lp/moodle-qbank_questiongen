@@ -285,12 +285,60 @@ final class question_generator_test extends \advanced_testcase {
     }
 
     /**
+     * Both AI requests respect viewmine and viewall independently of the add capability.
+     */
+    #[\PHPUnit\Framework\Attributes\Group('baseline')]
+    public function test_existing_question_permissions(): void {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        set_config('provider', 'local_ai_manager', 'qbank_questiongen');
+        $course = $this->getDataGenerator()->create_course();
+        $bank = question_bank_helper::create_default_open_instance($course, 'security');
+        $user = $this->getDataGenerator()->create_user();
+        $roleid = create_role('Question contributor', 'questioncontributor', '');
+        $this->getDataGenerator()->enrol_user($user->id, $course->id, $roleid);
+        assign_capability('moodle/question:add', CAP_ALLOW, $roleid, $bank->context->id);
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
+        $category = $generator->create_question_category(['contextid' => $bank->context->id]);
+        $generator->create_question('shortanswer', null, ['category' => $category->id, 'name' => 'Private foreign question']);
+        $generator->create_question('shortanswer', null, ['category' => $category->id,
+            'createdby' => $user->id, 'name' => 'Own question']);
+        $selection = (object) ['catalogue' => [
+            1 => (object) ['id' => 1, 'name' => 'One', 'qtype' => 'shortanswer', 'selectiondescription' => 'Recall'],
+            2 => (object) ['id' => 2, 'name' => 'Two', 'qtype' => 'essay', 'selectiondescription' => 'Explain'],
+        ], 'pedagogy' => ''];
+        $data = (object) ['category' => $category->id, 'mode' => story_form::QUESTIONGEN_MODE_TOPIC,
+            'story' => 'A topic', 'primer' => '', 'instructions' => '', 'example' => ''];
+        foreach (['none' => 0, 'viewmine' => 1, 'viewall' => 2] as $capability => $expected) {
+            if ($capability !== 'none') {
+                assign_capability('moodle/question:' . $capability, CAP_ALLOW, $roleid, $bank->context->id);
+            }
+            accesslib_clear_all_caches_for_unit_testing();
+            $this->setUser($user);
+            $requests = [];
+            $questiongenerator = $this->getMockBuilder(question_generator::class)
+                ->setConstructorArgs([$bank->context->id])->onlyMethods(['retrieve_llm_response'])->getMock();
+            $questiongenerator->method('retrieve_llm_response')->willReturnCallback(function ($messages) use (&$requests) {
+                $requests[] = json_encode($messages);
+                return ['generatedquestiontext' => '{"presetid":1}', 'errormessage' => ''];
+            });
+            $questiongenerator->select_preset($data, $selection, true);
+            $questiongenerator->generate_question($data, true);
+            $this->assertCount(2, $requests);
+            foreach ($requests as $request) {
+                $this->assertSame($expected > 0, str_contains($request, 'Own question'));
+                $this->assertSame($expected > 1, str_contains($request, 'Private foreign question'));
+            }
+        }
+    }
+
+    /**
      * Tests the extracting of content from course modules.
      *
      * @covers \qbank_questiongen\local\question_generator::extract_content_from_cm
      */
     public function test_extract_content_from_cm(): void {
-        global $CFG;
+        global $CFG, $USER;
         $this->resetAfterTest();
         $course = $this->getDataGenerator()->create_course();
         $this->setAdminUser();
@@ -325,14 +373,17 @@ final class question_generator_test extends \advanced_testcase {
         // Now test different file types.
         // We start with simple .txt file.
         $filerecord = ['component' => 'mod_resource', 'filearea' => 'content',
-            'contextid' => $context->id, 'itemid' => 0, 'filepath' => '/'];
+            'contextid' => $context->id, 'itemid' => 0, 'filepath' => '/',
+            'userid' => $this->getDataGenerator()->create_user()->id];
         $filerecord['filename'] = 'testfile.txt';
         $file = $fs->create_file_from_string($filerecord, $testcontent);
 
         $extractor = $this->createMock(\local_ai_content\document_extractor::class);
         $extractor->method('is_file_supported')
             ->willReturnCallback(fn(\stored_file $file) => in_array($file->get_mimetype(), ['application/pdf', 'image/png']));
-        $extractor->method('extract_text_from_file')->willReturn('Extracted PDF or image content');
+        $extractor->method('extract_text_from_file')
+            ->with($this->isInstanceOf(\stored_file::class), $qbankcminfo->context->id, $USER->id, 'qbank_questiongen')
+            ->willReturn('Extracted PDF or image content');
         \core\di::set(\local_ai_content\document_extractor::class, $extractor);
         $content = $questiongenerator->extract_content_from_cm(get_fast_modinfo($course)->get_cm($resource->cmid));
         $this->assertEquals($testcontent, $content);
@@ -422,6 +473,86 @@ final class question_generator_test extends \advanced_testcase {
     }
 
     /**
+     * Source extraction follows module, chapter, course and file-area permissions.
+     */
+    #[\PHPUnit\Framework\Attributes\Group('baseline')]
+    public function test_source_permissions(): void {
+        global $DB;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $course = $this->getDataGenerator()->create_course();
+        $othercourse = $this->getDataGenerator()->create_course();
+        $bank = question_bank_helper::create_default_open_instance($course, 'security');
+        $user = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user->id, $course->id, 'student');
+        $this->getDataGenerator()->enrol_user($user->id, $othercourse->id, 'student');
+        $roleid = $DB->get_field('role', 'id', ['shortname' => 'student'], MUST_EXIST);
+        $modules = [];
+        foreach (['page', 'resource', 'folder', 'book', 'lesson'] as $type) {
+            $modules[$type] = $this->getDataGenerator()->create_module($type, ['course' => $course->id]);
+        }
+        $bookgenerator = $this->getDataGenerator()->get_plugin_generator('mod_book');
+        $bookgenerator->create_content($modules['book'], ['title' => 'Visible chapter', 'content' => 'Public content']);
+        $bookgenerator->create_content($modules['book'], [
+            'title' => 'Hidden chapter', 'content' => 'Private content', 'hidden' => 1,
+        ]);
+        $foreign = $this->getDataGenerator()->create_module('page', ['course' => $othercourse->id]);
+        $hidden = $this->getDataGenerator()->create_module('page', ['course' => $course->id, 'visible' => 0]);
+        $label = $this->getDataGenerator()->create_module('label', ['course' => $course->id, 'intro' => 'Course content']);
+        $generator = new question_generator($bank->context->id);
+        $this->setUser($user);
+        $bookcm = get_fast_modinfo($course)->get_cm($modules['book']->cmid);
+        $story = $generator->create_story_from_cms([$bookcm->id]);
+        $this->assertStringContainsString('Public content', $story);
+        $this->assertStringNotContainsString('Private content', $story);
+        assign_capability('mod/book:viewhiddenchapters', CAP_ALLOW, $roleid, $bookcm->context->id);
+        accesslib_clear_all_caches_for_unit_testing();
+        $this->assertStringContainsString('Private content', $generator->create_story_from_cms([$bookcm->id]));
+        $capabilities = ['page' => 'view', 'resource' => 'view', 'folder' => 'view', 'book' => 'read', 'lesson' => 'manage'];
+        foreach ($capabilities as $type => $cap) {
+            $cm = get_fast_modinfo($course)->get_cm($modules[$type]->cmid);
+            assign_capability('mod/' . $type . ':' . $cap, CAP_PROHIBIT, $roleid, $cm->context->id);
+            accesslib_clear_all_caches_for_unit_testing();
+            $this->assertFalse(question_generator::is_cm_supported(get_fast_modinfo($course)->get_cm($cm->id)));
+            try {
+                $generator->extract_content_from_cm($cm);
+                $this->fail('Denied module content was read: ' . $type);
+            } catch (questiongen_exception $exception) {
+                $this->assertSame('errornoactivitiesselected', $exception->errorcode);
+            }
+        }
+        foreach ([$foreign, $hidden] as $module) {
+            try {
+                $generator->extract_content_from_cm(get_fast_modinfo($module->course)->get_cm($module->cmid));
+                $this->fail('Content outside the permitted course selection was read');
+            } catch (questiongen_exception $exception) {
+                $this->assertSame('errornoactivitiesselected', $exception->errorcode);
+            }
+        }
+        $this->setAdminUser();
+        $file = get_file_storage()->create_file_from_string([
+            'contextid' => context_module::instance($modules['resource']->cmid)->id,
+            'component' => 'mod_resource', 'filearea' => 'intro', 'itemid' => 0, 'filepath' => '/', 'filename' => 'private.pdf',
+        ], 'Not a source file');
+        try {
+            $generator->extract_content_from_pdf_or_image($file);
+            $this->fail('A file outside the source content area was read');
+        } catch (questiongen_exception $exception) {
+            $this->assertSame('errornoactivitiesselected', $exception->errorcode);
+        }
+        $enrol = enrol_get_plugin('manual');
+        $instance = $DB->get_record('enrol', ['courseid' => $course->id, 'enrol' => 'manual'], '*', MUST_EXIST);
+        $enrol->unenrol_user($instance, $user->id);
+        $this->setUser($user);
+        try {
+            $generator->create_story_from_cms([$label->cmid]);
+            $this->fail('Unenrolled user read course content');
+        } catch (questiongen_exception $exception) {
+            $this->assertSame('errornoactivitiesselected', $exception->errorcode);
+        }
+    }
+
+    /**
      * Tests the formatting of the extract cm content.
      *
      * @param string $content the content to format
@@ -470,14 +601,16 @@ final class question_generator_test extends \advanced_testcase {
      * @covers \qbank_questiongen\local\question_generator::extract_content_from_pdf_or_image
      */
     public function test_extract_content_from_pdf_or_image(): void {
-        global $CFG;
+        global $CFG, $USER;
         $this->resetAfterTest();
         $this->setAdminUser();
         $course = $this->getDataGenerator()->create_course();
         $qbankcminfo = question_bank_helper::create_default_open_instance($course, 'testquestionbank');
         $fs = get_file_storage();
-        // That's just a fake file record for testing purposes. We just need a stored_file.
-        $filerecord = ['component' => 'qbank_questiongen', 'filearea' => 'test', 'contextid' => $qbankcminfo->context->id,
+        $resource = $this->getDataGenerator()->create_module('resource', ['course' => $course->id]);
+        $owner = $this->getDataGenerator()->create_user();
+        $filerecord = ['component' => 'mod_resource', 'filearea' => 'content',
+            'contextid' => context_module::instance($resource->cmid)->id, 'userid' => $owner->id,
             'itemid' => 0, 'filepath' => '/', 'filename' => 'testpdf.pdf'];
         $file = $fs->create_file_from_string(
             $filerecord,
@@ -487,7 +620,7 @@ final class question_generator_test extends \advanced_testcase {
         $extractor = $this->createMock(\local_ai_content\document_extractor::class);
         $extractor->expects($this->once())
             ->method('extract_text_from_file')
-            ->with($file, $qbankcminfo->context->id, $file->get_userid() ?: null, 'qbank_questiongen')
+            ->with($file, $qbankcminfo->context->id, $USER->id, 'qbank_questiongen')
             ->willReturn('content from file');
         \core\di::set(\local_ai_content\document_extractor::class, $extractor);
 
