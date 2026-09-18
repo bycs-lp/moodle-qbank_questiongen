@@ -130,12 +130,42 @@ class story_form extends \moodleform {
         $mform->addHelpButton('courseactivities', 'activitylist', 'qbank_questiongen');
 
         // Preset selection.
+        $mform->addElement('select', 'selectionmode', get_string('selectionmode', 'qbank_questiongen'), [
+            0 => get_string('selectionfixed', 'qbank_questiongen'),
+            1 => get_string('selectionautomatic', 'qbank_questiongen'),
+        ]);
+        $mform->setType('selectionmode', PARAM_INT);
+        $mform->setDefault('selectionmode', 0);
+        $types = [];
+        foreach (\qbank_questiongen\local\utils::get_preset_catalogue() as $candidate) {
+            $types[$candidate->qtype] = get_string('pluginname', 'qtype_' . $candidate->qtype);
+        }
+        \core_collator::asort($types);
+        $mform->addElement(
+            'autocomplete',
+            'qtypes',
+            get_string('selectiontypes', 'qbank_questiongen'),
+            $types,
+            ['multiple' => true, 'noselectionstring' => get_string('selectionalltypes', 'qbank_questiongen')]
+        );
+        $mform->setType('qtypes', PARAM_ALPHANUMEXT);
+        $mform->hideIf('qtypes', 'selectionmode', 'eq', 0);
+        $mform->addElement(
+            'textarea',
+            'pedagogy',
+            get_string('pedagogy', 'qbank_questiongen'),
+            ['rows' => 4, 'cols' => 50, 'maxlength' => 4000]
+        );
+        $mform->setType('pedagogy', PARAM_TEXT);
+        $mform->addHelpButton('pedagogy', 'pedagogy', 'qbank_questiongen');
+        $mform->hideIf('pedagogy', 'selectionmode', 'eq', 0);
         $presetrecords = $DB->get_records('qbank_questiongen_preset');
         $presets = [];
         foreach ($presetrecords as $presetrecord) {
             $presets[$presetrecord->id] = $presetrecord->name;
         }
         $mform->addElement('select', 'preset', get_string('preset', 'qbank_questiongen'), $presets);
+        $mform->hideIf('preset', 'selectionmode', 'eq', 1);
 
         if (has_capability('qbank/questiongen:manage', \context_system::instance())) {
             $mform->addElement(
@@ -148,6 +178,7 @@ class story_form extends \moodleform {
 
         // Edit preset.
         $mform->addElement('checkbox', 'editpreset', get_string('editpreset', 'qbank_questiongen'));
+        $mform->hideIf('editpreset', 'selectionmode', 'eq', 1);
 
         // Create elements for all presets.
         foreach ($presetrecords as $presetrecord) {
@@ -165,6 +196,7 @@ class story_form extends \moodleform {
             $mform->addHelpButton('primer' . $id, 'primer', 'qbank_questiongen');
             $mform->hideIf('primer' . $id, 'editpreset');
             $mform->hideIf('primer' . $id, 'preset', 'neq', "$id");
+            $mform->hideIf('primer' . $id, 'selectionmode', 'eq', 1);
 
             // Instructions.
             $mform->addElement(
@@ -178,6 +210,7 @@ class story_form extends \moodleform {
             $mform->addHelpButton('instructions' . $id, 'instructions', 'qbank_questiongen');
             $mform->hideIf('instructions' . $id, 'editpreset');
             $mform->hideIf('instructions' . $id, 'preset', 'neq', "$id");
+            $mform->hideIf('instructions' . $id, 'selectionmode', 'eq', 1);
 
             // Example.
             $mform->addElement(
@@ -191,6 +224,7 @@ class story_form extends \moodleform {
             $mform->addHelpButton('example' . $id, 'example', 'qbank_questiongen');
             $mform->hideIf('example' . $id, 'editpreset');
             $mform->hideIf('example' . $id, 'preset', 'neq', "$id");
+            $mform->hideIf('example' . $id, 'selectionmode', 'eq', 1);
         }
 
         $mform->addElement(
@@ -220,7 +254,25 @@ class story_form extends \moodleform {
 
     #[\Override]
     public function validation($data, $files) {
+        global $DB;
         $errors = [];
+        if (!in_array((int) ($data['selectionmode'] ?? 0), [0, 1], true)) {
+            $errors['selectionmode'] = get_string('invaliddata', 'error');
+        } else if (!empty($data['selectionmode'])) {
+            try {
+                \qbank_questiongen\local\utils::prepare_selection((object) $data);
+            } catch (\invalid_parameter_exception $exception) {
+                $errors['qtypes'] = get_string('errorselectioncatalogue', 'qbank_questiongen');
+            }
+            if (\core_text::strlen($data['pedagogy'] ?? '') > 4000) {
+                $errors['pedagogy'] = get_string('errortexttoolong', 'qbank_questiongen', 4000);
+            }
+        } else if (!$DB->record_exists('qbank_questiongen_preset', ['id' => $data['preset'] ?? 0])) {
+            $errors['preset'] = get_string('errorselectioncatalogue', 'qbank_questiongen');
+        }
+        if ((int) $data['numofquestions'] < 1 || (int) $data['numofquestions'] > 10) {
+            $errors['numofquestions'] = get_string('invaliddata', 'error');
+        }
         if (intval($data['mode']) === self::QUESTIONGEN_MODE_TOPIC && empty(trim($data['topic']))) {
             $errors['topic'] = get_string('errortopicempty', 'qbank_questiongen');
         }
@@ -229,6 +281,24 @@ class story_form extends \moodleform {
         }
         if (intval($data['mode']) === self::QUESTIONGEN_MODE_COURSECONTENTS && empty($data['courseactivities'])) {
             $errors['courseactivities'] = get_string('errornoactivitiesselected', 'qbank_questiongen');
+        }
+        if (intval($data['mode']) === self::QUESTIONGEN_MODE_COURSECONTENTS && !empty($data['courseactivities'])) {
+            [, $cm] = get_module_from_cmid($this->_customdata['cmid']);
+            $allowed = [];
+            foreach (get_fast_modinfo($cm->course)->get_cms() as $activity) {
+                if ($activity->uservisible && question_generator::is_cm_supported($activity)) {
+                    $allowed[] = $activity->id;
+                }
+            }
+            if (array_diff($data['courseactivities'], $allowed)) {
+                $errors['courseactivities'] = get_string('invaliddata', 'error');
+            }
+        }
+        if (
+            !in_array((int) $data['mode'], [self::QUESTIONGEN_MODE_TOPIC, self::QUESTIONGEN_MODE_STORY,
+            self::QUESTIONGEN_MODE_COURSECONTENTS], true)
+        ) {
+            $errors['mode'] = get_string('invaliddata', 'error');
         }
         return $errors;
     }

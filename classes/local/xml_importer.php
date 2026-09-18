@@ -29,6 +29,75 @@ use stdClass;
  */
 class xml_importer {
     /**
+     * Resolve a single question without writing to the question bank.
+     * Embedded files are excluded from type detection to avoid creating draft files.
+     *
+     * @param string $xml Moodle XML document
+     * @return stdClass Derived XML and Moodle type names
+     * @throws \invalid_parameter_exception If the document cannot be used as a question preset
+     */
+    public static function validate_question(string $xml): stdClass {
+        global $CFG;
+        require_once($CFG->dirroot . '/question/engine/bank.php');
+        require_once($CFG->dirroot . '/question/format/xml/format.php');
+
+        if (strlen($xml) > 262144 || trim($xml) === '') {
+            throw new \invalid_parameter_exception('Invalid question XML size');
+        }
+        $previous = libxml_use_internal_errors(true);
+        try {
+            $document = new \DOMDocument();
+            if (!$document->loadXML($xml, LIBXML_NONET) || $document->doctype !== null) {
+                throw new \invalid_parameter_exception('Invalid question XML document');
+            }
+            $root = $document->documentElement;
+            if ($root->tagName !== 'quiz' || $root->namespaceURI) {
+                throw new \invalid_parameter_exception('Expected a quiz document');
+            }
+            $elements = [];
+            foreach ($root->childNodes as $node) {
+                if ($node instanceof \DOMElement) {
+                    $elements[] = $node;
+                }
+            }
+            if (count($elements) !== 1 || $elements[0]->tagName !== 'question' || $elements[0]->namespaceURI) {
+                throw new \invalid_parameter_exception('Expected exactly one question');
+            }
+            $xmltype = $elements[0]->getAttribute('type');
+            if ($xmltype === '' || in_array($xmltype, ['category', 'description'])) {
+                throw new \invalid_parameter_exception('Unsupported question type');
+            }
+            foreach (iterator_to_array($document->getElementsByTagName('file')) as $file) {
+                if ($file->getAttribute('encoding') !== 'base64' || base64_decode($file->textContent, true) === false) {
+                    throw new \invalid_parameter_exception('Invalid embedded file');
+                }
+                $file->parentNode->removeChild($file);
+            }
+            $format = new \qformat_xml();
+            ob_start();
+            try {
+                $questions = $format->readquestions([$document->saveXML()]);
+            } catch (\Throwable $exception) {
+                throw new \invalid_parameter_exception('Cannot read question XML');
+            } finally {
+                ob_end_clean();
+            }
+            if ($format->importerrors || !is_array($questions) || count($questions) !== 1) {
+                throw new \invalid_parameter_exception('Cannot read a single question');
+            }
+            $qtype = $questions[0]->qtype ?? '';
+            $plugin = \question_bank::get_qtype($qtype, false);
+            if (!$plugin || in_array($qtype, ['category', 'description', 'missingtype'])) {
+                throw new \invalid_parameter_exception('Question type is not installed');
+            }
+            return (object) ['qtype' => $qtype, 'xmltype' => $xmltype];
+        } finally {
+            libxml_clear_errors();
+            libxml_use_internal_errors($previous);
+        }
+    }
+
+    /**
      * Parse the XML questions.
      *
      * @param int $categoryid the question category to import the question to
@@ -42,6 +111,19 @@ class xml_importer {
         bool $addidentifier,
     ): bool {
         global $CFG, $DB;
+
+        try {
+            $actual = self::validate_question($llmresponse->text);
+            if (
+                isset($llmresponse->expectedtype) &&
+                ($actual->qtype !== $llmresponse->expectedtype->qtype ||
+                $actual->xmltype !== $llmresponse->expectedtype->xmltype)
+            ) {
+                return false;
+            }
+        } catch (\invalid_parameter_exception $exception) {
+            return false;
+        }
 
         // Eventually add a prefix to the question title. We have to do this in the XML before importing.
         $llmresponse->text = self::add_aiidentifiers($llmresponse->text, $addidentifier);
@@ -69,6 +151,7 @@ class xml_importer {
         $qformat->setFilename($importfile);
         $qformat->setRealfilename($realfilename);
         $qformat->setStoponerror(true);
+        $qformat->set_display_progress(false);
 
         // Do anything before that we need to.
         if (!$qformat->importpreprocess()) {

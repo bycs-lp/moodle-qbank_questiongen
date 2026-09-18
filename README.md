@@ -32,8 +32,35 @@ The plugin is in an alpha to beta stadium right now.
 * As LLM do not really "understand" Moodle XML and just work with examples and "generate something similiar" the background processes will try to parse the generated XML up to a configurable number of times. If no parseable question is being generated, this will be feedbacked to the user. Adhoc tasks are never being retried, also not on failure. The user will have to start a new question generation.
 * The table `qbank_questiongen` contains all the question generation processes (one question each line). Admins with access to the database can use this to debug problems. A cleanup job will clean up the entries after a configurable delay.
 
+## Automatic Preset Selection
+
+The **Preset selection** field defaults to **Fixed preset**. Choose **AI selection** to let the AI select a suitable preset for each question based on the supplied content and pedagogical criteria.
+
+- **Restrict question types (optional)** is a searchable multi-select. Leave it empty to allow all currently valid presets. Multiple presets of the same type remain separate candidates.
+- **Pedagogical requirements (optional)** accepts learning objectives, target age, cognitive demand and teaching scenarios, up to 4000 characters. The requirements guide both selection and generation. They do not override the type restriction or the source-only rule in content modes.
+- Selection prioritises suitability, not a guaranteed distribution of question types. Direct prompt/template editing remains available only for fixed presets.
+- New valid administrative presets are immediately available to new requests. The XML example determines the internal Moodle question type; there is no hard-coded list of five types or separate AI approval step. Optional suitability descriptions can be entered in preset administration, up to 2000 characters; otherwise existing instructions provide the selection context.
+- Examples must contain exactly one supported question, no DTD, category instructions or description question, and be at most 256 KiB. Validation uses Moodle's XML reader without creating a question; type-specific storage requirements are still checked during the actual import.
+- Each automatic batch stores its immutable catalogue, type filter and pedagogical requirements once in the first `qbank_questiongen.selectiondata` record (maximum 1 MiB). Editing or deleting a preset later does not change an existing batch. Task customdata contains IDs and processing options, not the catalogue or pedagogical prompt.
+- The selected preset ID is stored before generation. Invalid selection responses get at most one retry. Invalid XML uses the configured attempt budget without repeating preset selection. Provider failures stop the batch; successful questions are retained. Every imported response must contain exactly one question, and automatic responses must match the selected type.
+- User-linked processing records are exported and deleted through the Privacy API in the system context and removed by scheduled cleanup. Queued generation tasks are included in user deletion. AI-manager logs and generated question-bank entries have their own privacy providers and retention rules.
+
+No additional AI purpose or frontend JavaScript build is required. Run the standard Moodle upgrade after deployment (plugin version `2026091701`). Existing valid presets receive derived type metadata; invalid existing examples remain available for correction and are excluded from automatic selection. Existing fixed-mode tasks remain supported.
+
+Implementation plan and local verification results: [docs/ki-vorlagenauswahl-plan.md](docs/ki-vorlagenauswahl-plan.md).
+
+## Import and Export Presets
+
+Preset administrators can upload a JSON bundle on the global preset management page, export the entire catalogue, or download an individual preset using its export icon. All operations require `qbank/questiongen:manage`; imports and downloads also require a valid session key.
+
+The portable format is `qbank_questiongen_presets`, version `1`, with a `presets` array containing `name`, `primer`, `instructions`, `example` and optional `selectiondescription`. Database IDs, timestamps and AI provider configuration are not exported. Question type metadata is derived from each XML example on the receiving site.
+
+Imports accept up to 100 presets and 8 MiB per JSON file. Individual examples remain limited to 256 KiB, names to 255 characters and suitability descriptions to 2000 characters. Every entry is validated before any database write. Unsupported types or invalid entries reject the entire bundle. Exact duplicates are skipped, including duplicates within the same file; different content with the same name creates a new preset and never overwrites an existing one. Existing invalid presets can still be exported for offline correction, but must be corrected before reimporting.
+
+An optional [21-type preset library](docs/presets-library.json) is included, with [coverage, prerequisites and provenance](docs/presets-library.md). It is not installed automatically on other sites: importing the complete library requires its additional question type plugins. Export individual compatible presets when moving to a site with fewer plugins.
+
 ## Care ##
-Question generation, especially if provided a lot of content, can use a lot of tokens. Currently, there is no limit for the users. You will have to have an eye on the token usage if you are the one that has to pay it.
+Question generation, especially with substantial content, can use many tokens. Selection and generation share the AI manager's `questiongeneration` quota: normally two requests per question, or one when only one preset is allowed, plus any retries. The quota is not reserved for the whole batch; it may be exhausted after selection and before generation. Monitor token costs separately from request counts.
 
 Also, this feature should be used responsibly in terms of resource consumption.
 

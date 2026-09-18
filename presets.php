@@ -29,27 +29,79 @@ require_login();
 
 global $DB, $OUTPUT, $PAGE;
 
-$url = new moodle_url('/qestion/bank/presets.php', []);
+$url = new moodle_url('/question/bank/questiongen/presets.php');
 $PAGE->set_url($url);
 $PAGE->set_context(context_system::instance());
 $PAGE->set_heading(get_string('managepresets', 'qbank_questiongen'));
+$PAGE->requires->css(new moodle_url('/question/bank/questiongen/styles.css'));
 
 require_capability('qbank/questiongen:manage', context_system::instance());
 
+$export = optional_param('export', 0, PARAM_BOOL);
+if ($export) {
+    require_sesskey();
+    $id = optional_param('id', 0, PARAM_INT);
+    $records = $id ? [$DB->get_record('qbank_questiongen_preset', ['id' => $id], '*', MUST_EXIST)] :
+        $DB->get_records('qbank_questiongen_preset', null, 'name, id');
+    require_once($CFG->libdir . '/filelib.php');
+    send_file(
+        \qbank_questiongen\local\preset_transfer::encode($records),
+        $id ? 'questiongen-preset-' . $id . '.json' : 'questiongen-presets.json',
+        0,
+        0,
+        true,
+        true,
+        'application/json'
+    );
+}
+
+$importform = new \qbank_questiongen\form\import_presets_form($url);
+$importerror = '';
+if ($importform->get_data()) {
+    require_sesskey();
+    try {
+        $result = \qbank_questiongen\local\preset_transfer::import((string) $importform->get_file_content('presetfile'));
+        redirect(
+            $url,
+            get_string('presetsimported', 'qbank_questiongen', $result),
+            null,
+            \core\output\notification::NOTIFY_SUCCESS
+        );
+    } catch (\qbank_questiongen\local\questiongen_exception $exception) {
+        $importerror = $exception->getMessage();
+    }
+}
+
 echo $OUTPUT->header();
+if ($importerror !== '') {
+    echo $OUTPUT->notification(s($importerror));
+}
+$importform->display();
 
 $presetsrecords = $DB->get_records('qbank_questiongen_preset');
 $presets = [];
 foreach ($presetsrecords as $preset) {
+    try {
+        $types = \qbank_questiongen\local\xml_importer::validate_question($preset->example);
+        $selectionstatus = get_string('pluginname', 'qtype_' . $types->qtype);
+    } catch (\invalid_parameter_exception $exception) {
+        $selectionstatus = get_string('selectionunavailable', 'qbank_questiongen');
+    }
     $presets[] = [
             'id' => $preset->id,
             'name' => $preset->name,
+            'selectionstatus' => $selectionstatus,
+            'selectiondescription' => $preset->selectiondescription,
+            'exporturl' => (new moodle_url($url, ['export' => 1, 'id' => $preset->id, 'sesskey' => sesskey()]))->out(false),
             'primer' => format_text($preset->primer, FORMAT_PLAIN, ['filter' => false]),
             'instructions' => format_text($preset->instructions, FORMAT_PLAIN, ['filter' => false]),
             'example' => '<pre><code>' . s($preset->example) . '</code></pre>',
     ];
 }
 
-echo $OUTPUT->render_from_template('qbank_questiongen/presets', ['presets' => array_values($presets)]);
+echo $OUTPUT->render_from_template('qbank_questiongen/presets', [
+    'presets' => array_values($presets),
+    'exporturl' => (new moodle_url($url, ['export' => 1, 'sesskey' => sesskey()]))->out(false),
+]);
 
 echo $OUTPUT->footer();

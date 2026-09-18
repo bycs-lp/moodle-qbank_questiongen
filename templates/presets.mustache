@@ -48,6 +48,7 @@
 <div class="d-flex flex-column">
     <div class="mt-5 mb-5">
         <a href="{{config.wwwroot}}/question/bank/questiongen/edit_preset.php" class="btn btn-primary">{{#str}}addpreset, qbank_questiongen{{/str}}</a>
+        <a href="{{exporturl}}" class="btn btn-secondary">{{#pix}}i/export, core{{/pix}} {{#str}}exportpresets, qbank_questiongen{{/str}}</a>
     </div>
     <div class="table-responsive">
         <table class="table table-hover table-bordered">
@@ -62,7 +63,11 @@
             <tbody>
             {{#presets}}
                 <tr>
-                    <td><a href="{{config.wwwroot}}/question/bank/questiongen/edit_preset.php?id={{id}}">{{name}}</a></td>
+                    <td><a href="{{config.wwwroot}}/question/bank/questiongen/edit_preset.php?id={{id}}">{{name}}</a>
+                        <div class="small">{{selectionstatus}}</div>
+                        <div class="small text-muted">{{selectiondescription}}</div>
+                        <a href="{{exporturl}}" class="btn btn-icon" title="{{#str}}exportpreset, qbank_questiongen{{/str}}" aria-label="{{#str}}exportpreset, qbank_questiongen{{/str}}">{{#pix}}i/export, core{{/pix}}</a>
+                    </td>
                     <td>{{{primer}}}</td>
                     <td>{{{instructions}}}</td>
                     <td><div style="max-width: 500px; max-height: 200px; overflow: scroll">{{{example}}}</div></td>

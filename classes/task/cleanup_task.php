@@ -68,7 +68,6 @@ class cleanup_task extends \core\task\scheduled_task {
         foreach ($tasks as $task) {
             if ($task->get_attempts_available() === 0 && $task->get_timestarted() < $this->clock->time() - $cleanupdelay) {
                 mtrace('Deleting old task ' . $task->get_id() . ' from task_adhoc table.');
-                mtrace('Customdata: ' . json_encode($task->get_custom_data()));
                 $DB->delete_records('task_adhoc', ['id' => $task->get_id()]);
             }
         }

@@ -101,7 +101,11 @@ if ($mform->is_cancelled() && empty($disablederrormessage)) {
         $courseid = required_param('courseid', PARAM_INT);
     }
 
-    $questiongenids = \qbank_questiongen\local\utils::store_questiongen_data($data);
+    $selection = !empty($data->selectionmode) ? \qbank_questiongen\local\utils::prepare_selection($data) : null;
+    [$categoryid] = explode(',', $data->category);
+    $targetcategory = $DB->get_record('question_categories', ['id' => $categoryid], '*', MUST_EXIST);
+    require_capability('moodle/question:add', context::instance_by_id($targetcategory->contextid));
+    $questiongenids = \qbank_questiongen\local\utils::store_questiongen_data($data, $selection);
 
     $customdata = [
         'contextid' => \context_module::instance($cm->id)->id,

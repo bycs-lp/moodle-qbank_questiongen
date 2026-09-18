@@ -29,7 +29,127 @@ use stdClass;
  * @author    Philipp Memmel
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+#[\PHPUnit\Framework\Attributes\CoversClass(question_generator::class)]
 final class question_generator_test extends \advanced_testcase {
+    /**
+     * Selection only accepts a permitted integer ID and retries invalid responses.
+     */
+    public function test_select_preset_contract(): void {
+        $this->resetAfterTest();
+        $catalogue = [3 => (object) ['id' => 3, 'name' => 'Match', 'qtype' => 'match', 'selectiondescription' => 'Relationships'],
+            4 => (object) ['id' => 4, 'name' => 'Short', 'qtype' => 'shortanswer', 'selectiondescription' => 'Recall']];
+        $selection = (object) ['catalogue' => $catalogue, 'pedagogy' => 'Compare concepts'];
+        $data = (object) ['mode' => story_form::QUESTIONGEN_MODE_STORY, 'story' => 'Synthetic source', 'category' => 0];
+        foreach (['[]', '{"presetid":"3"}', '{"presetid":99}', '{"presetid":3,"other":true}', 'broken'] as $invalid) {
+            $generator = $this->getMockBuilder(question_generator::class)->setConstructorArgs([SYSCONTEXTID])
+                ->onlyMethods(['retrieve_llm_response'])->getMock();
+            $generator->expects($this->exactly(2))->method('retrieve_llm_response')->willReturnOnConsecutiveCalls(
+                ['generatedquestiontext' => $invalid, 'errormessage' => ''],
+                ['generatedquestiontext' => '{"presetid":3}', 'errormessage' => '']
+            );
+            $this->assertSame($catalogue[3], $generator->select_preset($data, $selection, false));
+        }
+        $generator = $this->getMockBuilder(question_generator::class)->setConstructorArgs([SYSCONTEXTID])
+            ->onlyMethods(['retrieve_llm_response'])->getMock();
+        $generator->expects($this->exactly(2))->method('retrieve_llm_response')
+            ->willReturn(['generatedquestiontext' => '{}', 'errormessage' => '']);
+        $this->assertNull($generator->select_preset($data, $selection, false));
+    }
+
+    /**
+     * Single candidates bypass AI selection and provider errors are not retried.
+     */
+    public function test_select_single_and_provider_error(): void {
+        $this->resetAfterTest();
+        $preset = (object) ['id' => 1, 'name' => 'One', 'qtype' => 'essay', 'selectiondescription' => 'Explain'];
+        $selection = (object) ['catalogue' => [1 => $preset], 'pedagogy' => ''];
+        $data = (object) ['mode' => 1, 'story' => 'Topic', 'category' => 0];
+        $generator = $this->getMockBuilder(question_generator::class)->setConstructorArgs([SYSCONTEXTID])
+            ->onlyMethods(['retrieve_llm_response'])->getMock();
+        $generator->expects($this->once())->method('retrieve_llm_response')
+            ->willReturn(['generatedquestiontext' => '', 'errormessage' => 'Quota exhausted']);
+        $this->assertSame($preset, $generator->select_preset($data, $selection, false));
+        $selection->catalogue[2] = clone $preset;
+        $this->expectException(questiongen_exception::class);
+        $generator->select_preset($data, $selection, false);
+    }
+
+    /**
+     * Verify the selection response contract through the manager with a fake connector.
+     */
+    public function test_selection_response_transport(): void {
+        global $DB, $USER;
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        set_config('restricttenants', 1, 'local_ai_manager');
+        set_config('allowedtenants', '1234', 'local_ai_manager');
+        $configmanager = new \local_ai_manager\local\config_manager(new \local_ai_manager\local\tenant('1234'));
+        $configmanager->set_config('tenantenabled', 1);
+        $configmanager->set_config('questiongeneration_max_requests_basic', 2);
+        $userinfo = new \local_ai_manager\local\userinfo($USER->id);
+        $userinfo->set_locked(false);
+        $userinfo->set_confirmed(true);
+        $userinfo->set_scope(\local_ai_manager\local\userinfo::SCOPE_EVERYWHERE);
+        $userinfo->set_role(\local_ai_manager\local\userinfo::ROLE_BASIC);
+        $userinfo->store();
+
+        $purpose = new \aipurpose_questiongeneration\purpose();
+        $instance = new \aitool_chatgpt\instance();
+        $instance->set_model_id_from_name('gpt-4o');
+        $instance->set_connector('chatgpt');
+        \local_ai_manager\plugininfo\aitool::enable_plugin('chatgpt', true);
+        $connector = $this->getMockBuilder(\aitool_chatgpt\connector::class)->setConstructorArgs([$instance])->getMock();
+        $requestresponse = \local_ai_manager\local\request_response::create_from_result(
+            new \GuzzleHttp\Psr7\Stream(fopen('php://temp', 'r+'))
+        );
+        $connector->expects($this->exactly(2))->method('make_request')->willReturn($requestresponse);
+        $responses = [];
+        $fence = str_repeat("\u{0060}", 3);
+        foreach (['{"presetid":3}', $fence . "json\n{\"presetid\":3}\n" . $fence] as $content) {
+            $responses[] = \local_ai_manager\local\prompt_response::create_from_result(
+                'gpt-4o',
+                new \local_ai_manager\local\usage(10.0, 5.0, 5.0),
+                $content
+            );
+        }
+        $connector->method('execute_prompt_completion')->willReturnOnConsecutiveCalls(...$responses);
+        $factory = $this->getMockBuilder(\local_ai_manager\local\connector_factory::class)
+            ->setConstructorArgs([$configmanager])->getMock();
+        $factory->method('get_connector_by_purpose')->willReturn($connector);
+        $factory->method('get_connector_instance_by_purpose')->willReturn($instance);
+        $factory->method('get_purpose_by_purpose_string')->willReturn($purpose);
+        \core\di::set(\local_ai_manager\local\config_manager::class, $configmanager);
+        \core\di::set(\local_ai_manager\local\connector_factory::class, $factory);
+        $this->redirectHook(\local_ai_manager\hook\additional_user_restriction::class, fn() => null);
+
+        $contextid = \context_system::instance()->id;
+        $generator = new question_generator($contextid);
+        for ($request = 0; $request < 2; $request++) {
+            ob_start();
+            try {
+                $result = $generator->retrieve_llm_response([
+                    ['sender' => 'system', 'message' => 'Return only a JSON object with an integer presetid.'],
+                    ['sender' => 'user', 'message' => 'Choose preset 3.'],
+                ]);
+            } finally {
+                ob_end_clean();
+            }
+            $this->assertSame('', $result['errormessage']);
+            $this->assertSame(['presetid' => 3], json_decode($result['generatedquestiontext'], true, 512, JSON_THROW_ON_ERROR));
+        }
+
+        $this->assertSame(2, $DB->count_records('local_ai_manager_request_log', [
+            'userid' => $USER->id,
+            'purpose' => 'questiongeneration',
+            'component' => 'qbank_questiongen',
+            'contextid' => $contextid,
+        ]));
+        $manager = new \local_ai_manager\manager('questiongeneration');
+        $this->assertSame(429, $manager->perform_request('Quota check', 'qbank_questiongen', $contextid)->get_code());
+        $this->stopHookRedirections();
+    }
+
     /**
      * Tests the functionality that substitutes certain placeholders in a string.
      *
@@ -76,6 +196,10 @@ final class question_generator_test extends \advanced_testcase {
             . $dataobject->story;
         $this->assertEquals($expectedstoryprompt, $questionobject->storyprompt);
         $this->assertEmpty($questionobject->questiontextsinqbankprompt);
+        $dataobject->pedagogy = 'Compare different causes for age 14';
+        $guided = $questiongenerator->generate_question($dataobject, false);
+        $this->assertStringContainsString($dataobject->pedagogy, $guided->instructions);
+        unset($dataobject->pedagogy);
 
         // Now test if sending questions as context works.
         $questionplugingenerator->create_question(

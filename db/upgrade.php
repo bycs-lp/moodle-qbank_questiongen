@@ -44,5 +44,51 @@ function xmldb_qbank_questiongen_upgrade(int $oldversion): bool {
         upgrade_plugin_savepoint(true, 2026072800, 'qbank', 'questiongen');
     }
 
+    if ($oldversion < 2026091700) {
+        global $DB;
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('qbank_questiongen_preset');
+        foreach (['qtype', 'xmltype'] as $name) {
+            $field = new xmldb_field($name, XMLDB_TYPE_CHAR, '100');
+            if (!$dbman->field_exists($table, $field)) {
+                $dbman->add_field($table, $field);
+            }
+        }
+        $field = new xmldb_field('selectiondescription', XMLDB_TYPE_TEXT);
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        $table = new xmldb_table('qbank_questiongen');
+        $field = new xmldb_field('selectionmode', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        $field = new xmldb_field('selectedpresetid', XMLDB_TYPE_INTEGER, '10');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        foreach ($DB->get_records('qbank_questiongen_preset') as $preset) {
+            try {
+                $types = \qbank_questiongen\local\xml_importer::validate_question($preset->example);
+                $types->id = $preset->id;
+                $DB->update_record('qbank_questiongen_preset', $types);
+            } catch (\invalid_parameter_exception $exception) {
+                continue;
+            }
+        }
+        upgrade_plugin_savepoint(true, 2026091700, 'qbank', 'questiongen');
+    }
+
+    if ($oldversion < 2026091701) {
+        global $DB;
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('qbank_questiongen');
+        $field = new xmldb_field('selectiondata', XMLDB_TYPE_TEXT);
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2026091701, 'qbank', 'questiongen');
+    }
+
     return true;
 }

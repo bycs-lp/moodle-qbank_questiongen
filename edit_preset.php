@@ -76,9 +76,15 @@ if ($preseteditform->is_cancelled()) {
     $record->primer = trim($data->primer);
     $record->instructions = trim($data->instructions);
     $record->example = trim($data->example);
+    $types = \qbank_questiongen\local\xml_importer::validate_question($record->example);
+    $record->qtype = $types->qtype;
+    $record->xmltype = $types->xmltype;
+    $record->selectiondescription = trim($data->selectiondescription);
+    $record->timemodified = time();
     if (!empty($record->id)) {
         $DB->update_record('qbank_questiongen_preset', $record);
     } else {
+        $record->timecreated = time();
         $DB->insert_record('qbank_questiongen_preset', $record);
     }
 
@@ -92,6 +98,7 @@ if ($preseteditform->is_cancelled()) {
         $data->primer = $record->primer;
         $data->instructions = $record->instructions;
         $data->example = $record->example;
+        $data->selectiondescription = $record->selectiondescription;
         $preseteditform->set_data($data);
     }
     echo $OUTPUT->header();

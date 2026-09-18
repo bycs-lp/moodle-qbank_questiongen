@@ -53,6 +53,15 @@ class edit_preset_form extends \moodleform {
         $mform->addElement('textarea', 'example', get_string('example', 'qbank_questiongen'), $textareaparams);
         $mform->setType('example', PARAM_RAW);
 
+        $mform->addElement(
+            'textarea',
+            'selectiondescription',
+            get_string('selectiondescription', 'qbank_questiongen'),
+            ['rows' => 3, 'style' => 'width: 100%']
+        );
+        $mform->setType('selectiondescription', PARAM_TEXT);
+        $mform->addHelpButton('selectiondescription', 'selectiondescription', 'qbank_questiongen');
+
         $this->add_action_buttons();
     }
 
@@ -68,8 +77,13 @@ class edit_preset_form extends \moodleform {
         if (empty(trim($data['instructions']))) {
             $errors['instructions'] = get_string('errorformfieldempty', 'qbank_questiongen');
         }
-        if (trim(empty($data['example']))) {
-            $errors['example'] = get_string('errorformfieldempty', 'qbank_questiongen');
+        try {
+            \qbank_questiongen\local\xml_importer::validate_question($data['example']);
+        } catch (\invalid_parameter_exception $exception) {
+            $errors['example'] = get_string('errorinvalidpresetxml', 'qbank_questiongen');
+        }
+        if (\core_text::strlen($data['selectiondescription'] ?? '') > 2000) {
+            $errors['selectiondescription'] = get_string('errortexttoolong', 'qbank_questiongen', 2000);
         }
         return $errors;
     }
