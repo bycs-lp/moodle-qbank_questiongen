@@ -37,6 +37,7 @@ use qbank_questiongen\local\utils;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 #[\PHPUnit\Framework\Attributes\CoversClass(generate_questions::class)]
+#[\PHPUnit\Framework\Attributes\Group('baseline')]
 final class generate_questions_test extends \advanced_testcase {
     /**
      * Run fixed, mixed and failing batches through the same processing workflow.

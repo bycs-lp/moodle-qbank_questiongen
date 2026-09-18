@@ -25,6 +25,7 @@ namespace qbank_questiongen\local;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 #[\PHPUnit\Framework\Attributes\CoversClass(utils::class)]
+#[\PHPUnit\Framework\Attributes\Group('baseline')]
 #[\PHPUnit\Framework\Attributes\CoversClass(preset_transfer::class)]
 final class utils_test extends \advanced_testcase {
     /**

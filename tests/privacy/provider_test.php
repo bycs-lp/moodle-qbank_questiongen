@@ -34,6 +34,7 @@ namespace qbank_questiongen\privacy;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 #[\PHPUnit\Framework\Attributes\CoversClass(provider::class)]
+#[\PHPUnit\Framework\Attributes\Group('baseline')]
 final class provider_test extends \core_privacy\tests\provider_testcase {
     /**
      * Export and deletion include snapshots without affecting another user.

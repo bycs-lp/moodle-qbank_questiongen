@@ -34,6 +34,7 @@ final class question_generator_test extends \advanced_testcase {
     /**
      * Select from the catalogue with bounded retries, single-candidate bypass and provider failure.
      */
+    #[\PHPUnit\Framework\Attributes\Group('baseline')]
     public function test_select_preset_contract(): void {
         $this->resetAfterTest();
         $catalogue = [3 => (object) ['id' => 3, 'name' => 'Match', 'qtype' => 'match', 'selectiondescription' => 'Relationships'],
@@ -68,6 +69,7 @@ final class question_generator_test extends \advanced_testcase {
     /**
      * Verify the selection response contract through the manager with a fake connector.
      */
+    #[\PHPUnit\Framework\Attributes\Group('baseline')]
     public function test_selection_response_transport(): void {
         global $DB, $USER;
         $this->resetAfterTest();
@@ -146,6 +148,7 @@ final class question_generator_test extends \advanced_testcase {
      *
      * @covers \qbank_questiongen\local\question_generator::generate_question
      */
+    #[\PHPUnit\Framework\Attributes\Group('baseline')]
     public function test_generate_question(): void {
         global $CFG;
         $this->resetAfterTest();

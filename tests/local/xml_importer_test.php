@@ -30,6 +30,7 @@ use stdClass;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 #[\PHPUnit\Framework\Attributes\CoversClass(xml_importer::class)]
+#[\PHPUnit\Framework\Attributes\Group('baseline')]
 #[\PHPUnit\Framework\Attributes\CoversClass(\qformat_xml::class)]
 final class xml_importer_test extends \advanced_testcase {
     /**

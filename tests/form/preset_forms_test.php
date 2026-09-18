@@ -25,6 +25,7 @@ namespace qbank_questiongen\form;
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 #[\PHPUnit\Framework\Attributes\CoversClass(story_form::class)]
+#[\PHPUnit\Framework\Attributes\Group('baseline')]
 #[\PHPUnit\Framework\Attributes\CoversClass(edit_preset_form::class)]
 final class preset_forms_test extends \advanced_testcase {
     /**
