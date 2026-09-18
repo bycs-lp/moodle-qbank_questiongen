@@ -58,6 +58,7 @@ class provider implements core_userlist_provider, metadata_provider, request_pro
     public static function get_contexts_for_userid(int $userid): \core_privacy\local\request\contextlist {
         global $DB;
         $contexts = new \core_privacy\local\request\contextlist();
+        // Temporary requests and queued tasks are attributed to users in the system context, not to question contexts.
         if (
             $DB->record_exists('qbank_questiongen', ['userid' => $userid]) ||
             $DB->record_exists('task_adhoc', ['userid' => $userid, 'classname' => '\\qbank_questiongen\\task\\generate_questions'])
@@ -80,6 +81,7 @@ class provider implements core_userlist_provider, metadata_provider, request_pro
         }
         $userid = $contextlist->get_user()->id;
         $records = $DB->get_records('qbank_questiongen', ['userid' => $userid]);
+        // Include pending tasks even when request records are no longer present, but never tasks from another component.
         $tasks = $DB->get_records('task_adhoc', ['userid' => $userid,
             'classname' => '\\qbank_questiongen\\task\\generate_questions'], '', 'id,customdata');
         \core_privacy\local\request\writer::with_context($context)->export_data(
@@ -98,6 +100,7 @@ class provider implements core_userlist_provider, metadata_provider, request_pro
         if ($context->contextlevel !== CONTEXT_SYSTEM) {
             return;
         }
+        // Remove processing data only; generated Moodle questions and AI-manager logs have their own privacy providers.
         $DB->delete_records('qbank_questiongen');
         foreach ($DB->get_records('task_adhoc', ['classname' => '\\qbank_questiongen\\task\\generate_questions']) as $task) {
             \core\task\manager::delete_adhoc_task($task->id);
@@ -125,6 +128,7 @@ class provider implements core_userlist_provider, metadata_provider, request_pro
             return;
         }
         $userlist->add_from_sql('userid', 'SELECT userid FROM {qbank_questiongen}', []);
+        // Users with only a pending task still need to appear in the privacy request's user list.
         $userlist->add_from_sql(
             'userid',
             'SELECT userid FROM {task_adhoc} WHERE classname = :classname',
@@ -156,6 +160,7 @@ class provider implements core_userlist_provider, metadata_provider, request_pro
         $DB->delete_records_list('qbank_questiongen', 'userid', $userids);
         [$insql, $params] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED);
         $params['classname'] = '\\qbank_questiongen\\task\\generate_questions';
+        // Cancel only this plugin's tasks for the approved users, using Core's task deletion API.
         foreach ($DB->get_records_select('task_adhoc', "userid $insql AND classname = :classname", $params) as $task) {
             \core\task\manager::delete_adhoc_task($task->id);
         }

@@ -64,6 +64,7 @@ final class xml_importer_test extends \advanced_testcase {
             $this->assertSame('<?xml version="1.0" encoding="UTF-8"?>', strtok($xml, "\r\n"), $preset->name);
             $xmltype = (string) simplexml_load_string($xml)->question['type'];
             $qtype = ['matching' => 'match', 'cloze' => 'multianswer'][$xmltype] ?? $xmltype;
+            // The library includes optional plugins; verify installed types without requiring every type in lean CI sites.
             if (!question_bank::is_qtype_installed($qtype)) {
                 continue;
             }
@@ -204,6 +205,7 @@ final class xml_importer_test extends \advanced_testcase {
         $payload = '<p>Safe <strong>content</strong></p><img src="x" onerror="alert(1)">'
             . '<script>alert(2)</script><a href="javascript:alert(3)">Link</a>';
         $response = new stdClass();
+        // Inspect stored content, not rendered output, so renderer cleaning cannot hide an unsafe import.
         foreach (['html', 'moodle_auto_format', 'markdown'] as $format) {
             $document = new \DOMDocument();
             $document->load(__DIR__ . '/../fixtures/multichoice.xml', LIBXML_NONET);

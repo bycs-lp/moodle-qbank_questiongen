@@ -54,6 +54,7 @@ class behat_qbank_questiongen extends behat_base {
         if (strpos($text, 'Sorry, but you do not currently have permissions to do that') === false) {
             throw new \Exception('Expected preset administration to be denied.');
         }
+        // Leave the expected error page before Behat's generic exception-page check runs after this step.
         $this->getSession()->visit($this->locate_path('/my/'));
     }
 

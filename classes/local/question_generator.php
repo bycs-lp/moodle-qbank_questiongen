@@ -55,6 +55,7 @@ class question_generator {
         global $CFG;
         require_once($CFG->dirroot . '/question/engine/bank.php');
         $catalogue = (array) $selection->catalogue;
+        // With one permitted candidate there is no selection decision, so avoid an extra AI request.
         if (count($catalogue) === 1) {
             return reset($catalogue);
         }
@@ -62,6 +63,7 @@ class question_generator {
             return null;
         }
         $candidates = [];
+        // Selection needs suitability metadata, not the full XML and generation prompts of every candidate.
         foreach ($catalogue as $preset) {
             $candidates[] = ['presetid' => (int) $preset->id, 'name' => $preset->name,
                 'qtype' => $preset->qtype, 'suitability' => $preset->selectiondescription];
@@ -81,6 +83,7 @@ class question_generator {
                 . 'Return only a JSON object with exactly one key presetid and a positive integer from the supplied catalogue.'],
             ['sender' => 'user', 'message' => json_encode($input, JSON_THROW_ON_ERROR)],
         ];
+        // Allow one retry for malformed selection output; provider errors abort instead of consuming more requests.
         for ($attempt = 0; $attempt < 2; $attempt++) {
             $response = $this->retrieve_llm_response($messages);
             if ($response['errormessage'] !== '') {
@@ -88,6 +91,7 @@ class question_generator {
             }
             try {
                 $answer = json_decode($response['generatedquestiontext'], false, 512, JSON_THROW_ON_ERROR);
+                // Accept only an integer ID from this batch's snapshot, never a model-supplied type or replacement preset.
                 if (
                     $answer instanceof stdClass && array_keys(get_object_vars($answer)) === ['presetid']
                     && is_int($answer->presetid) && $answer->presetid > 0 && isset($catalogue[$answer->presetid])
@@ -215,11 +219,13 @@ class question_generator {
         global $CFG, $DB;
         require_once($CFG->libdir . '/questionlib.php');
         $contextid = $DB->get_field('question_categories', 'contextid', ['id' => $categoryid], MUST_EXIST);
+        // Query afresh for each request so previously generated questions in this batch can help avoid duplicates.
         $ids = question_bank::get_finder()->get_questions_from_categories([$categoryid], null);
         $questions = [];
         if ($ids) {
             foreach ($DB->get_records_list('question', 'id', $ids, '', 'id,name,questiontext,createdby') as $question) {
                 $question->contextid = $contextid;
+                // The finder does not check permissions; viewmine additionally depends on the question's creator.
                 if (question_has_capability_on($question, 'view')) {
                     $questions[] = ['title' => $question->name, 'question_text' => strip_tags($question->questiontext)];
                 }
@@ -235,6 +241,7 @@ class question_generator {
      * @return string text extracted from the activities that can be send as context to the external AI system
      */
     public function create_story_from_cms(array $courseactivities): string {
+        // Resolve IDs within the request's course, not a course inferred from the submitted source IDs.
         $coursecontext = \context::instance_by_id($this->contextid)->get_course_context();
         $modinfo = get_fast_modinfo($coursecontext->instanceid);
         $story = '';
@@ -255,6 +262,7 @@ class question_generator {
         if (!$cm->uservisible || !can_access_course($cm->get_course(), null, '', true)) {
             return false;
         }
+        // Full lesson extraction includes every page, so require management rather than a learner's restricted access.
         $capabilities = ['page' => 'mod/page:view', 'resource' => 'mod/resource:view', 'folder' => 'mod/folder:view',
             'book' => 'mod/book:read', 'lesson' => 'mod/lesson:manage'];
         if ($cm->modname === 'label') {
@@ -311,6 +319,7 @@ class question_generator {
      */
     public function extract_content_from_cm(cm_info $cm): string {
         global $CFG, $DB;
+        // Refresh access for the executing user; form-time visibility is not sufficient for a queued task.
         $cm = get_fast_modinfo($cm->course)->get_cm($cm->id);
         $this->require_source_access($cm);
         // TODO Eventually also respect course module descriptions and title?
@@ -365,6 +374,7 @@ class question_generator {
                 $book = $DB->get_record('book', ['id' => $instance->id]);
                 $chapters = book_preload_chapters($book);
                 $chaptercontents = [];
+                // A visible book can still contain chapters the current user is not allowed to read.
                 $viewhidden = has_capability('mod/book:viewhiddenchapters', $cm->context);
                 foreach ($chapters as $chapter) {
                     if ($chapter->hidden && !$viewhidden) {
@@ -398,6 +408,7 @@ class question_generator {
         }
         $cm = get_fast_modinfo($context->get_course_context()->instanceid)->get_cm($context->instanceid);
         $this->require_source_access($cm);
+        // A matching module context alone must not grant access to its other file areas or item IDs.
         if (
             !in_array($cm->modname, ['resource', 'folder']) || $file->get_component() !== 'mod_' . $cm->modname
             || $file->get_filearea() !== 'content' || (int) $file->get_itemid() !== 0
@@ -405,6 +416,7 @@ class question_generator {
             throw new questiongen_exception('errornoactivitiesselected', 'qbank_questiongen');
         }
         $extractor = \core\di::get(\local_ai_content\document_extractor::class);
+        // Attribute AI permissions, usage and quota to the requester, not the user who originally uploaded the file.
         return $extractor->extract_text_from_file($file, $this->contextid, $USER->id, 'qbank_questiongen');
     }
 
@@ -418,6 +430,7 @@ class question_generator {
      */
     private function extract_content_from_file(\stored_file $file): string {
         global $USER;
+        // Callers select files from an authorised source module; plain text needs no external extraction request.
         if (in_array($file->get_mimetype(), self::TEXT_MIMETYPES)) {
             return $file->get_content();
         }
@@ -463,6 +476,7 @@ class question_generator {
             'errormessage' => '',
         ];
         $manager = $this->get_manager();
+        // The manager expects the last message as the prompt and all preceding messages as conversation context.
         $lastmessage = array_pop($messages);
         $result = $manager->perform_request(
             $lastmessage['message'],
@@ -484,6 +498,7 @@ class question_generator {
      * @return \local_ai_manager\manager The question-generation manager
      */
     protected function get_manager(): \local_ai_manager\manager {
+        // Both preset selection and XML generation consume the same purpose quota.
         return new \local_ai_manager\manager('questiongeneration');
     }
 }

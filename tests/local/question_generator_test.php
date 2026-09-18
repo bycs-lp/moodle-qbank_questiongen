@@ -41,6 +41,7 @@ final class question_generator_test extends \advanced_testcase {
             4 => (object) ['id' => 4, 'name' => 'Short', 'qtype' => 'shortanswer', 'selectiondescription' => 'Recall']];
         $selection = (object) ['catalogue' => $catalogue, 'pedagogy' => 'Compare concepts'];
         $data = (object) ['mode' => story_form::QUESTIONGEN_MODE_STORY, 'story' => 'Synthetic source', 'category' => 0];
+        // Each invalid answer must consume exactly one retry and then accept an ID from the unchanged catalogue.
         foreach (['[]', '{"presetid":"3"}', '{"presetid":99}', '{"presetid":3,"other":true}', 'broken'] as $invalid) {
             $generator = $this->getMockBuilder(question_generator::class)->setConstructorArgs([SYSCONTEXTID])
                 ->onlyMethods(['retrieve_llm_response'])->getMock();
@@ -67,7 +68,7 @@ final class question_generator_test extends \advanced_testcase {
     }
 
     /**
-    * Verify the public manager contract without depending on its internal configuration classes.
+        * Verify the public manager contract without depending on its internal configuration classes.
      */
     #[\PHPUnit\Framework\Attributes\Group('baseline')]
     public function test_selection_response_transport(): void {
@@ -75,6 +76,7 @@ final class question_generator_test extends \advanced_testcase {
         $this->setAdminUser();
         $contextid = \context_system::instance()->id;
         $conversation = [['sender' => 'system', 'message' => 'Return only the selected preset ID.']];
+        // Discover the installed manager's response type without coupling this test to its internal class namespace.
         $method = new \ReflectionMethod(\local_ai_manager\manager::class, 'perform_request');
         $responsetype = $method->getReturnType()->getName();
         $cases = [
@@ -267,6 +269,7 @@ final class question_generator_test extends \advanced_testcase {
         ], 'pedagogy' => ''];
         $data = (object) ['category' => $category->id, 'mode' => story_form::QUESTIONGEN_MODE_TOPIC,
             'story' => 'A topic', 'primer' => '', 'instructions' => '', 'example' => ''];
+        // Grant read permissions incrementally; question:add alone must never expose existing question contents.
         foreach (['none' => 0, 'viewmine' => 1, 'viewall' => 2] as $capability => $expected) {
             if ($capability !== 'none') {
                 assign_capability('moodle/question:' . $capability, CAP_ALLOW, $roleid, $bank->context->id);
@@ -499,6 +502,7 @@ final class question_generator_test extends \advanced_testcase {
             $this->assertSame('errornoactivitiesselected', $exception->errorcode);
         }
         $enrol = enrol_get_plugin('manual');
+        // Use a label after unenrolment so this denial tests course access, not an earlier module-capability prohibition.
         $instance = $DB->get_record('enrol', ['courseid' => $course->id, 'enrol' => 'manual'], '*', MUST_EXIST);
         $enrol->unenrol_user($instance, $user->id);
         $this->setUser($user);

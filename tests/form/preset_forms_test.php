@@ -51,6 +51,7 @@ final class preset_forms_test extends \advanced_testcase {
             'too long' => [['match'], str_repeat('a', 4001), 'errortexttoolong'],
         ];
         foreach ($cases as $scenario => [$qtypes, $pedagogy, $error]) {
+            // Exercise the real submission path: calling validation() directly would miss autocomplete's option filtering.
             story_form::mock_submit([
                 'cmid' => $bank->id, 'category' => $category->id . ',' . $bank->context->id,
                 'selectionmode' => 1, 'mode' => 1, 'topic' => 'Synthetic topic', 'numofquestions' => 1,

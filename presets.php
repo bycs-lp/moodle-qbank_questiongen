@@ -41,6 +41,7 @@ $export = optional_param('export', 0, PARAM_BOOL);
 if ($export) {
     require_sesskey();
     $id = optional_param('id', 0, PARAM_INT);
+    // A zero ID exports the catalogue; a concrete ID exports one preset using the same portable bundle format.
     $records = $id ? [$DB->get_record('qbank_questiongen_preset', ['id' => $id], '*', MUST_EXIST)] :
         $DB->get_records('qbank_questiongen_preset', null, 'name, id');
     require_once($CFG->libdir . '/filelib.php');
@@ -60,6 +61,7 @@ $importerror = '';
 if ($importform->get_data()) {
     require_sesskey();
     try {
+        // Read the current user's uploaded draft through Moodle's form API, not a supplied filesystem path.
         $result = \qbank_questiongen\local\preset_transfer::import((string) $importform->get_file_content('presetfile'));
         redirect(
             $url,
@@ -82,8 +84,10 @@ $presetsrecords = $DB->get_records('qbank_questiongen_preset');
 require_once($CFG->dirroot . '/question/engine/bank.php');
 $presets = [];
 foreach ($presetsrecords as $preset) {
+    // Display stored validation metadata; listing presets must not parse their XML examples again.
     $selectionstatus = !empty($preset->qtype) && question_bank::is_qtype_installed($preset->qtype)
         ? get_string('pluginname', 'qtype_' . $preset->qtype) : get_string('selectionunavailable', 'qbank_questiongen');
+    // The template renders prompt/example HTML unescaped, so prepare plain-text formatting and escaped XML here.
     $presets[] = [
             'id' => $preset->id,
             'name' => $preset->name,

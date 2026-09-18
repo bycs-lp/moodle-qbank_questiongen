@@ -47,6 +47,7 @@ class generate_questions extends \core\task\adhoc_task {
             }
             $questionstocreatecount = count($questiongenrecords);
             $selection = null;
+            // Check every record before reading course content or calling AI; permissions may have changed since submission.
             foreach ($questiongenrecords as $record) {
                 if ((int) $record->userid !== (int) $USER->id) {
                     throw new \required_capability_exception(
@@ -58,6 +59,7 @@ class generate_questions extends \core\task\adhoc_task {
                 }
                 $category = $DB->get_record('question_categories', ['id' => $record->category], '*', MUST_EXIST);
                 require_capability('moodle/question:add', \context::instance_by_id($category->contextid));
+                // One record holds the shared snapshot; load it once but continue checking ownership of the whole batch.
                 if ($selection === null && !empty($record->selectiondata)) {
                     $selection = json_decode($record->selectiondata, false, 512, JSON_THROW_ON_ERROR);
                 }
@@ -109,6 +111,7 @@ class generate_questions extends \core\task\adhoc_task {
                         throw new \qbank_questiongen\local\questiongen_exception('errorselectioncatalogue', 'qbank_questiongen');
                     }
                     $catalogue = (array) $selection->catalogue;
+                    // Reuse a stored choice from the immutable snapshot rather than consulting today's preset table.
                     $selected = $dbrecord->selectedpresetid ? ($catalogue[$dbrecord->selectedpresetid] ?? null) : null;
                     if (!$selected) {
                         $this->progress->update(
@@ -123,6 +126,7 @@ class generate_questions extends \core\task\adhoc_task {
                         );
                     }
                     if (!$selected) {
+                        // Invalid selection output fails only this question; the next question may still be generated.
                         $DB->update_record('qbank_questiongen', (object) [
                             'id' => $dbrecord->id, 'success' => '0', 'timemodified' => $clock->time(),
                         ]);
@@ -134,6 +138,7 @@ class generate_questions extends \core\task\adhoc_task {
                         $i++;
                         continue;
                     }
+                    // Persist the chosen prompts before generation so XML retries cannot change the selected preset.
                     $dbrecord->selectedpresetid = $selected->id;
                     $dbrecord->primer = $selected->primer;
                     $dbrecord->instructions = $selected->instructions;
@@ -146,6 +151,7 @@ class generate_questions extends \core\task\adhoc_task {
                 $maxtries = max(1, (int) $dbrecord->numoftries);
                 mtrace("[qbank_questiongen] Creating Question $i ...\n");
 
+                // The tries counter starts at one and persists failures; this loop retries XML generation, not preset selection.
                 while (!$created && $dbrecord->tries <= $maxtries) {
                     // Get questions from AI API.
                     $question = $questiongenerator->generate_question($dbrecord, $customdata->sendexistingquestionsascontext);
@@ -225,6 +231,7 @@ class generate_questions extends \core\task\adhoc_task {
                 );
             }
         } catch (\Throwable $exception) {
+            // Progress is user-facing: keep provider details and source content out of messages and task diagnostics.
             $usererrormessage = get_string('errorcreatingquestionscritical', 'qbank_questiongen');
             mtrace('Exception thrown during task. Task will not be requeued. This is just for debugging purposes.');
             mtrace('Question generation stopped: ' . get_class($exception));
@@ -235,6 +242,7 @@ class generate_questions extends \core\task\adhoc_task {
             }
             $this->progress->error($usererrormessage);
         } finally {
+            // An early return must not leave owned requests pending; preserve completed results and foreign records.
             if (!empty($questiongenids)) {
                 foreach ($DB->get_records_list('qbank_questiongen', 'id', $questiongenids) as $record) {
                     if ((int) $record->userid === (int) $USER->id && (string) $record->success === '') {

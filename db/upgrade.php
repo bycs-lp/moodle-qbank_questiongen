@@ -48,6 +48,7 @@ function xmldb_qbank_questiongen_upgrade(int $oldversion): bool {
         global $DB;
         $dbman = $DB->get_manager();
         $table = new xmldb_table('qbank_questiongen_preset');
+        // Leave existing presets untouched; qtype is populated when an administrator reviews and saves each preset.
         $field = new xmldb_field('qtype', XMLDB_TYPE_CHAR, '100');
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
@@ -83,10 +84,12 @@ function xmldb_qbank_questiongen_upgrade(int $oldversion): bool {
         global $DB;
         $dbman = $DB->get_manager();
         $table = new xmldb_table('qbank_questiongen_preset');
+        // Earlier development versions stored the XML spelling separately; fresh installs no longer create this field.
         $field = new xmldb_field('xmltype');
         if ($dbman->field_exists($table, $field)) {
             $dbman->drop_field($table, $field);
         }
+        // Register the new provider before sending; review is manual, without invoking XML/qtype code during upgrade.
         message_update_providers('qbank_questiongen');
         $url = new moodle_url('/question/bank/questiongen/presets.php');
         foreach (get_admins() as $admin) {

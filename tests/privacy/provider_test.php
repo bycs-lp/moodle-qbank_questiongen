@@ -44,6 +44,7 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $this->resetAfterTest();
         $user = $this->getDataGenerator()->create_user();
         $other = $this->getDataGenerator()->create_user();
+        // Give both users matching request/task pairs to detect accidental cross-user export or deletion.
         foreach ([$user, $other] as $owner) {
             $record = (object) ['userid' => $owner->id, 'category' => 0, 'numoftries' => 1,
                 'llmresponse' => '', 'success' => '', 'uniqid' => 'privacy' . $owner->id, 'story' => 'Private input',

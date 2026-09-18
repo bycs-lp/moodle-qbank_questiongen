@@ -62,6 +62,7 @@ final class utils_test extends \advanced_testcase {
         $table = new \xmldb_table('qbank_questiongen_preset');
         $field = new \xmldb_field('xmltype', XMLDB_TYPE_CHAR, '100');
         $this->assertFalse($dbman->field_exists($table, $field));
+        // Recreate an earlier development schema to verify its cleanup as well as the normal upgrade path.
         $dbman->add_field($table, $field);
         try {
             set_config('version', 2026091701, 'qbank_questiongen');
@@ -100,6 +101,7 @@ final class utils_test extends \advanced_testcase {
         $this->assertSame($json, preset_transfer::encode($DB->get_records('qbank_questiongen_preset', null, 'id')));
         $document = json_decode($json);
         $document->presets[0]->name = 'Must not be imported';
+        // An invalid later entry must prevent insertion of the otherwise valid first entry.
         $document->presets[1]->example = '<quiz/>';
         try {
             preset_transfer::import(json_encode($document));

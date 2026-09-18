@@ -47,6 +47,7 @@ class xml_importer {
         $previous = libxml_use_internal_errors(true);
         try {
             $document = new \DOMDocument();
+            // Do not fetch network resources or accept DTDs; the import contract is a self-contained quiz document.
             if (!$document->loadXML($xml, LIBXML_NONET) || $document->doctype !== null) {
                 throw new \invalid_parameter_exception('Invalid question XML document');
             }
@@ -55,6 +56,7 @@ class xml_importer {
                 throw new \invalid_parameter_exception('Expected a quiz document');
             }
             $elements = [];
+            // Count direct child elements, ignoring formatting whitespace and comments around the single question.
             foreach ($root->childNodes as $node) {
                 if ($node instanceof \DOMElement) {
                     $elements[] = $node;
@@ -67,9 +69,11 @@ class xml_importer {
             if ($xmltype === '' || in_array($xmltype, ['category', 'description'])) {
                 throw new \invalid_parameter_exception('Unsupported question type');
             }
+            // The legacy image path can create draft files while reading, so it is not accepted for validation.
             if ($document->getElementsByTagName('image_base64')->length) {
                 throw new \invalid_parameter_exception('Legacy image fields are not supported');
             }
+            // Remove embedded files from this parser copy only; snapshot the live node list before removing its nodes.
             foreach (iterator_to_array($document->getElementsByTagName('file')) as $file) {
                 if ($file->getAttribute('encoding') !== 'base64' || base64_decode($file->textContent, true) === false) {
                     throw new \invalid_parameter_exception('Invalid embedded file');
@@ -77,6 +81,7 @@ class xml_importer {
                 $file->parentNode->removeChild($file);
             }
             $format = new \qformat_xml();
+            // Core readers can print diagnostics; expose a field error instead of rendering uploaded XML or parser output.
             ob_start();
             try {
                 $questions = $format->readquestions([$document->saveXML()]);
@@ -116,6 +121,7 @@ class xml_importer {
 
         try {
             $actual = self::validate_question($llmresponse->text);
+            // Compare resolved qtypes rather than XML spellings, allowing Core aliases such as matching/match.
             if (
                 isset($llmresponse->expectedtype) &&
                 $actual->qtype !== $llmresponse->expectedtype->qtype
@@ -128,9 +134,11 @@ class xml_importer {
 
         $category = $DB->get_record('question_categories', ['id' => $categoryid], '*', MUST_EXIST);
         $context = \context::instance_by_id($category->contextid);
+        // Recheck permission at the write boundary, including calls that do not originate from the generation form.
         require_capability('moodle/question:add', $context);
         $document = new \DOMDocument();
         $document->loadXML($llmresponse->text, LIBXML_NONET);
+        // XML validity does not make its HTML trusted; clean text before Core stores and later renders the question.
         foreach ($document->getElementsByTagName('text') as $text) {
             $parent = $text->parentNode;
             assert($parent instanceof \DOMElement);
@@ -140,6 +148,7 @@ class xml_importer {
             }
             $content = $text->textContent;
             if ($format === 'markdown') {
+                // Clean the rendered representation and update the format so it is not interpreted as Markdown again.
                 $content = format_text($content, FORMAT_MARKDOWN, [
                     'context' => $context, 'filter' => false, 'noclean' => false, 'para' => false,
                 ]);
@@ -153,6 +162,7 @@ class xml_importer {
         $llmresponse->text = self::add_aiidentifiers($llmresponse->text, $addidentifier);
 
         $fileformat = 'xml';
+        // Core's importer expects a filename; use a Moodle-managed temporary directory, not a client-supplied path.
         $filedir = make_request_directory();
         $realfilename = uniqid() . "." . $fileformat;
         $importfile = $filedir . '/' . $realfilename;
@@ -174,6 +184,7 @@ class xml_importer {
         $qformat->setFilename($importfile);
         $qformat->setRealfilename($realfilename);
         $qformat->setStoponerror(true);
+        // Do not copy question contents into the background task log through the importer's progress output.
         $qformat->set_display_progress(false);
 
         // Do anything before that we need to.

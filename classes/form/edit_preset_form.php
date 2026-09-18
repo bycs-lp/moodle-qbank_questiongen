@@ -39,6 +39,7 @@ class edit_preset_form extends \moodleform {
      * @return \stdClass
      */
     public function get_preset(): \stdClass {
+        // Return the derived qtype without parsing the XML again; controller updates must not mutate the retained result.
         return clone $this->validatedpreset;
     }
 
@@ -79,6 +80,7 @@ class edit_preset_form extends \moodleform {
 
     #[\Override]
     public function validation($data, $files): array {
+        // Keep only editable fields and use the same limits and XML rules as JSON import.
         $this->validatedpreset = new \stdClass();
         foreach (['name', 'primer', 'instructions', 'example', 'selectiondescription'] as $field) {
             $this->validatedpreset->$field = trim($data[$field] ?? '');

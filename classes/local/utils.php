@@ -39,10 +39,12 @@ class utils {
         global $DB, $CFG;
         require_once($CFG->dirroot . '/question/engine/bank.php');
         $catalogue = [];
+        // XML was validated when saved; catalogue reads only check stored metadata and current plugin availability.
         foreach ($presets ?? $DB->get_records('qbank_questiongen_preset', null, 'name, id') as $preset) {
             if (empty($preset->qtype) || !\question_bank::is_qtype_installed($preset->qtype)) {
                 continue;
             }
+            // Resolve language placeholders without changing records that the caller may still need unmodified.
             $preset = clone $preset;
             $preset->primer = self::filter_prompts($preset->primer);
             $preset->instructions = self::filter_prompts($preset->instructions);
@@ -66,6 +68,7 @@ class utils {
         }
         $qtypes = (array) ($data->qtypes ?? []);
         $catalogue ??= self::get_preset_catalogue();
+        // Reject stale or unknown restrictions before filtering; an empty explicit selection means all available types.
         if (array_diff($qtypes, array_column($catalogue, 'qtype'))) {
             throw new \invalid_parameter_exception('Invalid question type filter');
         }
@@ -75,6 +78,7 @@ class utils {
         if (!$catalogue) {
             throw new \invalid_parameter_exception('No suitable presets');
         }
+        // Freeze candidates and guidance for this batch; later administrative changes must not alter queued requests.
         $snapshot = (object) ['catalogue' => $catalogue, 'pedagogy' => $pedagogy, 'qtypes' => $qtypes];
         if (strlen(json_encode($snapshot, JSON_THROW_ON_ERROR)) > 1048576) {
             throw new \invalid_parameter_exception('Preset catalogue is too large');
@@ -123,6 +127,7 @@ class utils {
 
         $dbrecord->llmresponse = '';
         $dbrecord->success = '';
+        // Automatic mode fills these fields only after choosing a preset; fixed mode retains the submitted prompt edits.
         $dbrecord->primer = $automatic ? '' : self::filter_prompts($data->{'primer' . $preset});
         $dbrecord->instructions = $automatic ? '' : self::filter_prompts($data->{'instructions' . $preset});
         $dbrecord->example = $automatic ? '' : $data->{'example' . $preset};
@@ -132,6 +137,7 @@ class utils {
         $questiongenids = [];
         while ($i < $data->numofquestions) {
             $dbrecord->uniqid = uniqid($USER->id, true);
+            // Store the shared snapshot once, in plugin data rather than task customdata that Core may log.
             $dbrecord->selectiondata = $i === 0 && $selection ? json_encode($selection, JSON_THROW_ON_ERROR) : null;
 
             $insertedid = $DB->insert_record('qbank_questiongen', $dbrecord);

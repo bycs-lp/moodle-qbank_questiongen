@@ -276,11 +276,14 @@ class story_form extends \moodleform {
             $errors['selectionmode'] = get_string('invaliddata', 'error');
         } else if (!empty($data['selectionmode'])) {
             try {
+                // Autocomplete drops unknown options on export; inspect raw values so stale restrictions do not become "all".
                 $submitted = (array) $this->_form->getSubmitValue('qtypes');
                 if (array_filter($submitted, 'is_string') !== $submitted) {
                     throw new \invalid_parameter_exception('Invalid question type filter');
                 }
+                // Moodle submits this sentinel for an empty multi-select; it is not a requested question type.
                 $data['qtypes'] = array_values(array_diff($submitted, ['_qf__force_multiselect_submission']));
+                // Reuse this request's catalogue and retain the validated snapshot for the controller.
                 $this->selection = \qbank_questiongen\local\utils::prepare_selection((object) $data, $this->catalogue);
             } catch (\qbank_questiongen\local\questiongen_exception $exception) {
                 $errors['pedagogy'] = $exception->getMessage();
@@ -303,6 +306,7 @@ class story_form extends \moodleform {
             $errors['courseactivities'] = get_string('errornoactivitiesselected', 'qbank_questiongen');
         }
         if (intval($data['mode']) === self::QUESTIONGEN_MODE_COURSECONTENTS && !empty($data['courseactivities'])) {
+            // Rebuild the permitted source list on submission rather than trusting IDs from the rendered form.
             [, $cm] = get_module_from_cmid($this->_customdata['cmid']);
             $allowed = [];
             foreach (get_fast_modinfo($cm->course)->get_cms() as $activity) {

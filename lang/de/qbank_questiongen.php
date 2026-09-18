@@ -27,9 +27,9 @@ defined('MOODLE_INTERNAL') || die();
 
 $string['errorinvalidpresetxml'] = 'Geben Sie gültiges Moodle-XML mit genau einer unterstützten Frage ein (maximal 256 KiB). Kategorieanweisungen und Beschreibungen sind nicht erlaubt.';
 $string['errorpresetentry'] = 'Vorlage {$a} ist ungültig oder ihr Fragetyp ist nicht verfügbar. Es wurden keine Vorlagen importiert.';
-$string['errorpresetexportsize'] = 'Dieser Export überschreitet die Importgrenzen (100 Vorlagen oder 8 MiB). Exportieren Sie die Vorlagen einzeln.';
+$string['errorpresetexportsize'] = 'Dieser Export überschreitet die Importgrenzen (100 Vorlagen oder 16 MiB). Exportieren Sie die Vorlagen einzeln.';
 $string['errorpresetfieldlength'] = 'Maximale Länge: {$a}. Name und Eignung werden in Zeichen gezählt, Prompt- und XML-Felder in Bytes.';
-$string['errorpresetfile'] = 'Laden Sie ein Questiongen-JSON-Paket hoch (Formatversion 1, 1 bis 100 Vorlagen, maximal 8 MiB).';
+$string['errorpresetfile'] = 'Laden Sie ein Questiongen-JSON-Paket hoch (Formatversion 1, 1 bis 100 Vorlagen, maximal 16 MiB).';
 $string['errorselectioncatalogue'] = 'Keine gültige Vorlage passt zur Auswahl oder der Vorlagenkatalog überschreitet 1 MiB. Prüfen Sie die ausgewählten Fragetypen und die Vorlagenkonfiguration.';
 $string['errorselectionprovider'] = 'Die KI-Anfrage konnte nicht abgeschlossen werden. Prüfen Sie die Verfügbarkeit und das verbleibende Kontingent.';
 $string['errorselectionresponse'] = 'Die KI konnte nach zwei Versuchen keine gültige Vorlage auswählen.';

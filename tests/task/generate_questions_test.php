@@ -54,6 +54,7 @@ final class generate_questions_test extends \advanced_testcase {
         question_get_top_category($qbank->context->id, true);
         $generator = $this->getDataGenerator()->get_plugin_generator('core_question');
         [$first, $second] = array_values(utils::get_preset_catalogue());
+        // Each case defines selection replies, generation replies, final request states and actually imported qtypes.
         $cases = [
             'fixed' => [[], [$first->example], ['1'], [$first->qtype]],
             'mixed' => [[$first, null, $second], ['<quiz/>', $first->example, $second->example],
@@ -77,6 +78,7 @@ final class generate_questions_test extends \advanced_testcase {
                 $this->assertEquals($createdtime, $record->timemodified);
             }
             $modifiedtime = $createdtime + HOURSECS;
+            // Separate submission and execution time to verify that every completion/failure path uses the Core clock.
             $this->mock_clock_with_frozen($modifiedtime);
             $ai = $this->getMockBuilder(question_generator::class)->setConstructorArgs([$qbank->context->id])
                 ->onlyMethods(['select_preset', 'generate_question'])->getMock();
@@ -149,6 +151,7 @@ final class generate_questions_test extends \advanced_testcase {
             $data->{$field . $preset->id} = $preset->$field;
         }
         foreach ([$otheruser, $user] as $owner) {
+            // Cover foreign ownership and missing target permission; neither may reach source extraction or AI calls.
             $this->setUser($owner);
             $ids = utils::store_questiongen_data($data);
             $this->setUser($user);
