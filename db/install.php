@@ -31,9 +31,6 @@ function xmldb_qbank_questiongen_install() {
     $initialpresets = file_get_contents($CFG->dirroot . '/question/bank/questiongen/db/initial_presets.json');
     $presets = json_decode($initialpresets, true);
     foreach ($presets as $preset) {
-        $types = \qbank_questiongen\local\xml_importer::validate_question($preset['example']);
-        $preset['qtype'] = $types->qtype;
-        $preset['xmltype'] = $types->xmltype;
         $DB->insert_record('qbank_questiongen_preset', $preset);
     }
     return true;

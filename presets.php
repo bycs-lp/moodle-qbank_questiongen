@@ -79,14 +79,11 @@ if ($importerror !== '') {
 $importform->display();
 
 $presetsrecords = $DB->get_records('qbank_questiongen_preset');
+require_once($CFG->dirroot . '/question/engine/bank.php');
 $presets = [];
 foreach ($presetsrecords as $preset) {
-    try {
-        $types = \qbank_questiongen\local\xml_importer::validate_question($preset->example);
-        $selectionstatus = get_string('pluginname', 'qtype_' . $types->qtype);
-    } catch (\invalid_parameter_exception $exception) {
-        $selectionstatus = get_string('selectionunavailable', 'qbank_questiongen');
-    }
+    $selectionstatus = !empty($preset->qtype) && question_bank::is_qtype_installed($preset->qtype)
+        ? get_string('pluginname', 'qtype_' . $preset->qtype) : get_string('selectionunavailable', 'qbank_questiongen');
     $presets[] = [
             'id' => $preset->id,
             'name' => $preset->name,

@@ -67,15 +67,6 @@ function xmldb_qbank_questiongen_upgrade(int $oldversion): bool {
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
-        foreach ($DB->get_records('qbank_questiongen_preset') as $preset) {
-            try {
-                $types = \qbank_questiongen\local\xml_importer::validate_question($preset->example);
-                $types->id = $preset->id;
-                $DB->update_record('qbank_questiongen_preset', $types);
-            } catch (\invalid_parameter_exception $exception) {
-                continue;
-            }
-        }
         upgrade_plugin_savepoint(true, 2026091700, 'qbank', 'questiongen');
     }
 
@@ -88,6 +79,36 @@ function xmldb_qbank_questiongen_upgrade(int $oldversion): bool {
             $dbman->add_field($table, $field);
         }
         upgrade_plugin_savepoint(true, 2026091701, 'qbank', 'questiongen');
+    }
+
+    if ($oldversion < 2026091800) {
+        global $DB;
+        $dbman = $DB->get_manager();
+        $table = new xmldb_table('qbank_questiongen_preset');
+        $field = new xmldb_field('xmltype');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+        message_update_providers('qbank_questiongen');
+        $url = new moodle_url('/question/bank/questiongen/presets.php');
+        foreach (get_admins() as $admin) {
+            $message = new \core\message\message();
+            $message->component = 'qbank_questiongen';
+            $message->name = 'presetsreviewrequired';
+            $message->courseid = SITEID;
+            $message->userfrom = \core_user::get_noreply_user();
+            $message->userto = $admin;
+            $message->subject = get_string('presetsreviewsubject', 'qbank_questiongen');
+            $message->fullmessage = get_string('presetsreviewmessage', 'qbank_questiongen', $url->out(false));
+            $message->fullmessageformat = FORMAT_PLAIN;
+            $message->fullmessagehtml = '';
+            $message->smallmessage = $message->subject;
+            $message->notification = 1;
+            $message->contexturl = $url->out(false);
+            $message->contexturlname = get_string('managepresets', 'qbank_questiongen');
+            message_send($message);
+        }
+        upgrade_plugin_savepoint(true, 2026091800, 'qbank', 'questiongen');
     }
 
     return true;

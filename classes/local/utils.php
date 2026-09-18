@@ -30,33 +30,24 @@ use stdClass;
  */
 class utils {
     /**
-     * Build a current, validated catalogue and resolve an optional type filter.
+     * Read validated presets whose question types are currently installed.
      *
-     * @param array $qtypes Internal question type names
+     * @param array|null $presets Already loaded preset records
      * @return array Preset snapshots indexed by ID
      */
-    public static function get_preset_catalogue(array $qtypes = []): array {
-        global $DB;
+    public static function get_preset_catalogue(?array $presets = null): array {
+        global $DB, $CFG;
+        require_once($CFG->dirroot . '/question/engine/bank.php');
         $catalogue = [];
-        foreach ($DB->get_records('qbank_questiongen_preset', null, 'name, id') as $preset) {
-            try {
-                $types = xml_importer::validate_question($preset->example);
-            } catch (\invalid_parameter_exception $exception) {
+        foreach ($presets ?? $DB->get_records('qbank_questiongen_preset', null, 'name, id') as $preset) {
+            if (empty($preset->qtype) || !\question_bank::is_qtype_installed($preset->qtype)) {
                 continue;
             }
-            $preset->qtype = $types->qtype;
-            $preset->xmltype = $types->xmltype;
+            $preset = clone $preset;
             $preset->primer = self::filter_prompts($preset->primer);
             $preset->instructions = self::filter_prompts($preset->instructions);
             $preset->selectiondescription = self::filter_prompts($preset->selectiondescription ?: $preset->instructions);
             $catalogue[$preset->id] = $preset;
-        }
-        $available = array_unique(array_column($catalogue, 'qtype'));
-        if (array_diff($qtypes, $available)) {
-            throw new \invalid_parameter_exception('Invalid question type filter');
-        }
-        if ($qtypes) {
-            $catalogue = array_filter($catalogue, fn($preset) => in_array($preset->qtype, $qtypes, true));
         }
         return $catalogue;
     }
@@ -65,15 +56,22 @@ class utils {
      * Prepare immutable automatic-selection data in the submitting user's language.
      *
      * @param stdClass $data Submitted form data
+     * @param array|null $catalogue Catalogue already loaded for this request
      * @return stdClass Task snapshot
      */
-    public static function prepare_selection(stdClass $data): stdClass {
+    public static function prepare_selection(stdClass $data, ?array $catalogue = null): stdClass {
         $pedagogy = trim($data->pedagogy ?? '');
         if (\core_text::strlen($pedagogy) > 4000) {
-            throw new \invalid_parameter_exception('Pedagogical prompt is too long');
+            throw new questiongen_exception('errortexttoolong', 'qbank_questiongen', '', 4000);
         }
         $qtypes = (array) ($data->qtypes ?? []);
-        $catalogue = self::get_preset_catalogue($qtypes);
+        $catalogue ??= self::get_preset_catalogue();
+        if (array_diff($qtypes, array_column($catalogue, 'qtype'))) {
+            throw new \invalid_parameter_exception('Invalid question type filter');
+        }
+        if ($qtypes) {
+            $catalogue = array_filter($catalogue, fn($preset) => in_array($preset->qtype, $qtypes, true));
+        }
         if (!$catalogue) {
             throw new \invalid_parameter_exception('No suitable presets');
         }

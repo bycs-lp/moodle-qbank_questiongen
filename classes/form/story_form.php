@@ -29,6 +29,21 @@ require_once($CFG->libdir . '/formslib.php');
  * @license     https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class story_form extends \moodleform {
+    /** @var array Validated preset catalogue for this form request. */
+    private array $catalogue;
+
+    /** @var \stdClass|null Validated snapshot, populated by get_data(). */
+    private ?\stdClass $selection = null;
+
+    /**
+     * Return the snapshot after successful form validation.
+     *
+     * @return \stdClass|null
+     */
+    public function get_selection(): ?\stdClass {
+        return $this->selection;
+    }
+
     /** @var int constant defining the question generation mode: generate questions based on a topic. */
     const QUESTIONGEN_MODE_TOPIC = 1;
 
@@ -136,8 +151,10 @@ class story_form extends \moodleform {
         ]);
         $mform->setType('selectionmode', PARAM_INT);
         $mform->setDefault('selectionmode', 0);
+        $presetrecords = $DB->get_records('qbank_questiongen_preset', null, 'name, id');
+        $this->catalogue = \qbank_questiongen\local\utils::get_preset_catalogue($presetrecords);
         $types = [];
-        foreach (\qbank_questiongen\local\utils::get_preset_catalogue() as $candidate) {
+        foreach ($this->catalogue as $candidate) {
             $types[$candidate->qtype] = get_string('pluginname', 'qtype_' . $candidate->qtype);
         }
         \core_collator::asort($types);
@@ -159,7 +176,6 @@ class story_form extends \moodleform {
         $mform->setType('pedagogy', PARAM_TEXT);
         $mform->addHelpButton('pedagogy', 'pedagogy', 'qbank_questiongen');
         $mform->hideIf('pedagogy', 'selectionmode', 'eq', 0);
-        $presetrecords = $DB->get_records('qbank_questiongen_preset');
         $presets = [];
         foreach ($presetrecords as $presetrecord) {
             $presets[$presetrecord->id] = $presetrecord->name;
@@ -260,12 +276,16 @@ class story_form extends \moodleform {
             $errors['selectionmode'] = get_string('invaliddata', 'error');
         } else if (!empty($data['selectionmode'])) {
             try {
-                \qbank_questiongen\local\utils::prepare_selection((object) $data);
+                $submitted = (array) $this->_form->getSubmitValue('qtypes');
+                if (array_filter($submitted, 'is_string') !== $submitted) {
+                    throw new \invalid_parameter_exception('Invalid question type filter');
+                }
+                $data['qtypes'] = array_values(array_diff($submitted, ['_qf__force_multiselect_submission']));
+                $this->selection = \qbank_questiongen\local\utils::prepare_selection((object) $data, $this->catalogue);
+            } catch (\qbank_questiongen\local\questiongen_exception $exception) {
+                $errors['pedagogy'] = $exception->getMessage();
             } catch (\invalid_parameter_exception $exception) {
                 $errors['qtypes'] = get_string('errorselectioncatalogue', 'qbank_questiongen');
-            }
-            if (\core_text::strlen($data['pedagogy'] ?? '') > 4000) {
-                $errors['pedagogy'] = get_string('errortexttoolong', 'qbank_questiongen', 4000);
             }
         } else if (!$DB->record_exists('qbank_questiongen_preset', ['id' => $data['preset'] ?? 0])) {
             $errors['preset'] = get_string('errorselectioncatalogue', 'qbank_questiongen');

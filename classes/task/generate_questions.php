@@ -45,7 +45,7 @@ class generate_questions extends \core\task\adhoc_task {
                 throw new \moodle_exception('errornogenerateentriesfound', 'qbank_questiongen');
             }
             $questionstocreatecount = count($questiongenrecords);
-            $selection = $customdata->selection ?? null;
+            $selection = null;
             foreach ($questiongenrecords as $record) {
                 if (!empty($record->selectiondata)) {
                     if ((int) $record->userid !== (int) $USER->id) {
@@ -142,7 +142,7 @@ class generate_questions extends \core\task\adhoc_task {
                     $dbrecord->timemodified = time();
                     $DB->update_record('qbank_questiongen', $dbrecord);
                     $dbrecord->pedagogy = $selection->pedagogy;
-                    $expectedtype = \qbank_questiongen\local\xml_importer::validate_question($selected->example);
+                    $expectedtype = $selected;
                 }
                 $maxtries = max(1, (int) $dbrecord->numoftries);
                 mtrace("[qbank_questiongen] Creating Question $i ...\n");
@@ -248,16 +248,6 @@ class generate_questions extends \core\task\adhoc_task {
                             'id' => $record->id, 'success' => '0', 'timemodified' => time(),
                         ]);
                     }
-                }
-            }
-            if (isset($customdata->selection)) {
-                unset($customdata->selection);
-                $this->set_custom_data($customdata);
-                if (
-                    $this->get_id() && $DB->record_exists('task_adhoc', ['id' => $this->get_id(),
-                    'classname' => '\\qbank_questiongen\\task\\generate_questions'])
-                ) {
-                    $DB->set_field('task_adhoc', 'customdata', $this->get_custom_data_as_string(), ['id' => $this->get_id()]);
                 }
             }
         }

@@ -33,7 +33,7 @@ class xml_importer {
      * Embedded files are excluded from type detection to avoid creating draft files.
      *
      * @param string $xml Moodle XML document
-     * @return stdClass Derived XML and Moodle type names
+     * @return stdClass Derived internal Moodle question type
      * @throws \invalid_parameter_exception If the document cannot be used as a question preset
      */
     public static function validate_question(string $xml): stdClass {
@@ -67,6 +67,9 @@ class xml_importer {
             if ($xmltype === '' || in_array($xmltype, ['category', 'description'])) {
                 throw new \invalid_parameter_exception('Unsupported question type');
             }
+            if ($document->getElementsByTagName('image_base64')->length) {
+                throw new \invalid_parameter_exception('Legacy image fields are not supported');
+            }
             foreach (iterator_to_array($document->getElementsByTagName('file')) as $file) {
                 if ($file->getAttribute('encoding') !== 'base64' || base64_decode($file->textContent, true) === false) {
                     throw new \invalid_parameter_exception('Invalid embedded file');
@@ -86,11 +89,10 @@ class xml_importer {
                 throw new \invalid_parameter_exception('Cannot read a single question');
             }
             $qtype = $questions[0]->qtype ?? '';
-            $plugin = \question_bank::get_qtype($qtype, false);
-            if (!$plugin || in_array($qtype, ['category', 'description', 'missingtype'])) {
+            if (!\question_bank::is_qtype_installed($qtype) || in_array($qtype, ['category', 'description', 'missingtype'])) {
                 throw new \invalid_parameter_exception('Question type is not installed');
             }
-            return (object) ['qtype' => $qtype, 'xmltype' => $xmltype];
+            return (object) ['qtype' => $qtype];
         } finally {
             libxml_clear_errors();
             libxml_use_internal_errors($previous);
@@ -116,8 +118,7 @@ class xml_importer {
             $actual = self::validate_question($llmresponse->text);
             if (
                 isset($llmresponse->expectedtype) &&
-                ($actual->qtype !== $llmresponse->expectedtype->qtype ||
-                $actual->xmltype !== $llmresponse->expectedtype->xmltype)
+                $actual->qtype !== $llmresponse->expectedtype->qtype
             ) {
                 return false;
             }

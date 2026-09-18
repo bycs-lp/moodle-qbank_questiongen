@@ -32,7 +32,7 @@ use stdClass;
 #[\PHPUnit\Framework\Attributes\CoversClass(question_generator::class)]
 final class question_generator_test extends \advanced_testcase {
     /**
-     * Selection only accepts a permitted integer ID and retries invalid responses.
+     * Select from the catalogue with bounded retries, single-candidate bypass and provider failure.
      */
     public function test_select_preset_contract(): void {
         $this->resetAfterTest();
@@ -54,22 +54,13 @@ final class question_generator_test extends \advanced_testcase {
         $generator->expects($this->exactly(2))->method('retrieve_llm_response')
             ->willReturn(['generatedquestiontext' => '{}', 'errormessage' => '']);
         $this->assertNull($generator->select_preset($data, $selection, false));
-    }
-
-    /**
-     * Single candidates bypass AI selection and provider errors are not retried.
-     */
-    public function test_select_single_and_provider_error(): void {
-        $this->resetAfterTest();
-        $preset = (object) ['id' => 1, 'name' => 'One', 'qtype' => 'essay', 'selectiondescription' => 'Explain'];
-        $selection = (object) ['catalogue' => [1 => $preset], 'pedagogy' => ''];
-        $data = (object) ['mode' => 1, 'story' => 'Topic', 'category' => 0];
         $generator = $this->getMockBuilder(question_generator::class)->setConstructorArgs([SYSCONTEXTID])
             ->onlyMethods(['retrieve_llm_response'])->getMock();
         $generator->expects($this->once())->method('retrieve_llm_response')
             ->willReturn(['generatedquestiontext' => '', 'errormessage' => 'Quota exhausted']);
-        $this->assertSame($preset, $generator->select_preset($data, $selection, false));
-        $selection->catalogue[2] = clone $preset;
+        $selection->catalogue = [3 => $catalogue[3]];
+        $this->assertSame($catalogue[3], $generator->select_preset($data, $selection, false));
+        $selection->catalogue = $catalogue;
         $this->expectException(questiongen_exception::class);
         $generator->select_preset($data, $selection, false);
     }

@@ -46,10 +46,45 @@ class preset_transfer {
             }
             $portable[] = $record;
         }
-        return json_encode(
+        $json = json_encode(
             ['format' => 'qbank_questiongen_presets', 'version' => 1, 'presets' => $portable],
             JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR
         ) . "\n";
+        if (count($portable) > 100 || strlen($json) > self::MAX_BYTES) {
+            throw new questiongen_exception('errorpresetexportsize', 'qbank_questiongen');
+        }
+        return $json;
+    }
+
+    /**
+     * Validate editable fields and derive the question type once at the write boundary.
+     *
+     * @param \stdClass $preset Preset whose qtype is populated on success
+     * @return array Field errors shared by the form and JSON importer
+     */
+    public static function validate_preset(\stdClass $preset): array {
+        $errors = [];
+        $preset->selectiondescription ??= '';
+        foreach (self::FIELDS as $field) {
+            $value = $preset->$field ?? null;
+            if (!is_string($value) || ($field !== 'selectiondescription' && trim($value) === '')) {
+                $errors[$field] = get_string('errorformfieldempty', 'qbank_questiongen');
+                continue;
+            }
+            $limit = ['name' => 255, 'selectiondescription' => 2000][$field] ?? 262144;
+            $length = in_array($field, ['name', 'selectiondescription']) ? \core_text::strlen($value) : strlen($value);
+            if ($length > $limit) {
+                $errors[$field] = get_string('errorpresetfieldlength', 'qbank_questiongen', $limit);
+            }
+        }
+        if (!isset($errors['example'])) {
+            try {
+                $preset->qtype = xml_importer::validate_question($preset->example)->qtype;
+            } catch (\invalid_parameter_exception $exception) {
+                $errors['example'] = get_string('errorinvalidpresetxml', 'qbank_questiongen');
+            }
+        }
+        return $errors;
     }
 
     /**
@@ -77,32 +112,14 @@ class preset_transfer {
         }
         $records = [];
         foreach ($document->presets as $index => $preset) {
-            try {
-                if (!($preset instanceof \stdClass)) {
-                    throw new \invalid_parameter_exception('Expected preset object');
-                }
-                $record = new \stdClass();
-                foreach (self::FIELDS as $field) {
-                    $value = $preset->$field ?? ($field === 'selectiondescription' ? '' : null);
-                    if (!is_string($value) || ($field !== 'selectiondescription' && trim($value) === '')) {
-                        throw new \invalid_parameter_exception('Invalid preset field');
-                    }
-                    $record->$field = $value;
-                }
-                if (
-                    \core_text::strlen($record->name) > 255 ||
-                    \core_text::strlen($record->selectiondescription) > 2000 ||
-                    strlen($record->primer) > 262144 || strlen($record->instructions) > 262144
-                ) {
-                    throw new \invalid_parameter_exception('Preset field too long');
-                }
-                $types = xml_importer::validate_question($record->example);
-                $record->qtype = $types->qtype;
-                $record->xmltype = $types->xmltype;
-                $records[] = $record;
-            } catch (\invalid_parameter_exception $exception) {
+            if (!($preset instanceof \stdClass)) {
                 throw new questiongen_exception('errorpresetentry', 'qbank_questiongen', '', $index + 1);
             }
+            $record = (object) array_intersect_key(get_object_vars($preset), array_flip(self::FIELDS));
+            if (self::validate_preset($record)) {
+                throw new questiongen_exception('errorpresetentry', 'qbank_questiongen', '', $index + 1);
+            }
+            $records[] = $record;
         }
         return $records;
     }

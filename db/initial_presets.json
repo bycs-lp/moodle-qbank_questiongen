@@ -1,6 +1,7 @@
 [
   {
     "id": 1,
+    "qtype": "multichoice",
     "name": "Multiple choice question",
     "primer": "You are a helpful teacher's assistant that creates moodle multiple choice questions based on the topics given by the user.",
     "instructions": "Write a multiple choice question in {{currentlang}} language in moodle XML format on a topic I will specify to you separately. Do not include the question title in the beginning of the question text. Return the answer as plain text without any formatting or wrapping like for example using markdown backticks. Only return the generated XML without any additional text before and after. For maths formulas use latex notation, wrap the formulas in \\( ... \\) for inline style and $$ ... $$ for display style.",
@@ -10,6 +11,7 @@
   },
   {
     "id": 2,
+    "qtype": "truefalse",
     "name": "True-False question",
     "primer": "You are a helpful teacher's assistant that creates moodle true-false choice questions based on the topics given by the user.",
     "instructions": "Write a true-false choice question in {{currentlang}} language in moodle XML format on a topic I will specify to you separately. Do not include the question title in the beginning of the question text. Return the answer as plain text without any formatting or wrapping like for example using markdown backticks. Only return the generated XML without any additional text before and after. For maths formulas use latex notation, wrap the formulas in \\( ... \\) for inline style and $$ ... $$ for display style.",
@@ -19,6 +21,7 @@
   },
   {
     "id": 3,
+    "qtype": "match",
     "name": "Match question",
     "primer": "You are a helpful teacher's assistant that creates moodle match questions based on the topics given by the user.",
     "instructions": "Write a match question in {{currentlang}} language in moodle XML format on a topic I will specify to you separately. Do not include the question title in the beginning of the question text. Return the answer as plain text without any formatting or wrapping like for example using markdown backticks. Only return the generated XML without any additional text before and after. For maths formulas use latex notation, wrap the formulas in \\( ... \\) for inline style and $$ ... $$ for display style.",
@@ -28,6 +31,7 @@
   },
   {
     "id": 4,
+    "qtype": "shortanswer",
     "name": "Short answer question",
     "primer": "You are a helpful teacher's assistant that creates moodle short answer questions based on the topics given by the user.",
     "instructions": "Write a short answer question in {{currentlang}} language in moodle XML format on a topic I will specify to you separately. Do not include the question title in the beginning of the question text. Return the answer as plain text without any formatting or wrapping like for example using markdown backticks. Only return the generated XML without any additional text before and after. For maths formulas use latex notation, wrap the formulas in \\( ... \\) for inline style and $$ ... $$ for display style.",
@@ -37,6 +41,7 @@
   },
   {
     "id": 5,
+    "qtype": "numerical",
     "name": "Numerical question",
     "primer": "You are a helpful teacher's assistant that creates moodle numerical questions based on the topics given by the user.",
     "instructions": "Write a numerical question in {{currentlang}} language in moodle XML format on a topic I will specify to you separately. Do not include the question title in the beginning of the question text. Return the answer as plain text without any formatting or wrapping like for example using markdown backticks. Only return the generated XML without any additional text before and after. For maths formulas use latex notation, wrap the formulas in \\( ... \\) for inline style and $$ ... $$ for display style.",

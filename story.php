@@ -101,7 +101,7 @@ if ($mform->is_cancelled() && empty($disablederrormessage)) {
         $courseid = required_param('courseid', PARAM_INT);
     }
 
-    $selection = !empty($data->selectionmode) ? \qbank_questiongen\local\utils::prepare_selection($data) : null;
+    $selection = $mform->get_selection();
     [$categoryid] = explode(',', $data->category);
     $targetcategory = $DB->get_record('question_categories', ['id' => $categoryid], '*', MUST_EXIST);
     require_capability('moodle/question:add', context::instance_by_id($targetcategory->contextid));

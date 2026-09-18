@@ -30,6 +30,18 @@ require_once($CFG->libdir . '/formslib.php');
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class edit_preset_form extends \moodleform {
+    /** @var \stdClass Preset populated during successful validation. */
+    private \stdClass $validatedpreset;
+
+    /**
+     * Return the validated preset after get_data() succeeds.
+     *
+     * @return \stdClass
+     */
+    public function get_preset(): \stdClass {
+        return clone $this->validatedpreset;
+    }
+
     #[\Override]
     public function definition() {
         $mform = &$this->_form;
@@ -67,24 +79,10 @@ class edit_preset_form extends \moodleform {
 
     #[\Override]
     public function validation($data, $files): array {
-        $errors = [];
-        if (empty(trim($data['name']))) {
-            $errors['name'] = get_string('errorformfieldempty', 'qbank_questiongen');
+        $this->validatedpreset = new \stdClass();
+        foreach (['name', 'primer', 'instructions', 'example', 'selectiondescription'] as $field) {
+            $this->validatedpreset->$field = trim($data[$field] ?? '');
         }
-        if (empty(trim($data['primer']))) {
-            $errors['primer'] = get_string('errorformfieldempty', 'qbank_questiongen');
-        }
-        if (empty(trim($data['instructions']))) {
-            $errors['instructions'] = get_string('errorformfieldempty', 'qbank_questiongen');
-        }
-        try {
-            \qbank_questiongen\local\xml_importer::validate_question($data['example']);
-        } catch (\invalid_parameter_exception $exception) {
-            $errors['example'] = get_string('errorinvalidpresetxml', 'qbank_questiongen');
-        }
-        if (\core_text::strlen($data['selectiondescription'] ?? '') > 2000) {
-            $errors['selectiondescription'] = get_string('errortexttoolong', 'qbank_questiongen', 2000);
-        }
-        return $errors;
+        return \qbank_questiongen\local\preset_transfer::validate_preset($this->validatedpreset);
     }
 }

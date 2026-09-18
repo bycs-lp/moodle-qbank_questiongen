@@ -68,18 +68,10 @@ $preseteditform = new \qbank_questiongen\form\edit_preset_form($actionurl, $opti
 if ($preseteditform->is_cancelled()) {
     redirect($returnurl);
 } else if ($data = $preseteditform->get_data()) {
-    $record = new stdClass();
+    $record = $preseteditform->get_preset();
     if (isset($data->id)) {
         $record->id = $data->id;
     }
-    $record->name = trim($data->name);
-    $record->primer = trim($data->primer);
-    $record->instructions = trim($data->instructions);
-    $record->example = trim($data->example);
-    $types = \qbank_questiongen\local\xml_importer::validate_question($record->example);
-    $record->qtype = $types->qtype;
-    $record->xmltype = $types->xmltype;
-    $record->selectiondescription = trim($data->selectiondescription);
     $record->timemodified = time();
     if (!empty($record->id)) {
         $DB->update_record('qbank_questiongen_preset', $record);

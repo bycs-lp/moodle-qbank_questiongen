@@ -45,11 +45,12 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
         $other = $this->getDataGenerator()->create_user();
         foreach ([$user, $other] as $owner) {
             $record = (object) ['userid' => $owner->id, 'category' => 0, 'numoftries' => 1,
-                'llmresponse' => '', 'success' => '', 'uniqid' => 'privacy' . $owner->id, 'story' => 'Private input'];
-            $DB->insert_record('qbank_questiongen', $record);
+                'llmresponse' => '', 'success' => '', 'uniqid' => 'privacy' . $owner->id, 'story' => 'Private input',
+                'selectiondata' => json_encode(['pedagogy' => 'Private pedagogical prompt'])];
+            $requestid = $DB->insert_record('qbank_questiongen', $record);
             $task = new \qbank_questiongen\task\generate_questions();
             $task->set_userid($owner->id);
-            $task->set_custom_data(['selection' => ['pedagogy' => 'Private pedagogical prompt']]);
+            $task->set_custom_data(['questiongenids' => [$requestid]]);
             \core\task\manager::queue_adhoc_task($task);
         }
         $context = \context_system::instance();
@@ -64,7 +65,8 @@ final class provider_test extends \core_privacy\tests\provider_testcase {
             ->get_data([get_string('pluginname', 'qbank_questiongen')]);
         $this->assertCount(1, $export->requests);
         $this->assertCount(1, $export->pendingtasks);
-        $this->assertStringContainsString('Private pedagogical prompt', $export->pendingtasks[0]->customdata);
+        $this->assertStringContainsString('Private pedagogical prompt', $export->requests[0]->selectiondata);
+        $this->assertStringNotContainsString('Private pedagogical prompt', $export->pendingtasks[0]->customdata);
         provider::delete_data_for_user($approved);
         $this->assertFalse($DB->record_exists('qbank_questiongen', ['userid' => $user->id]));
         $this->assertFalse($DB->record_exists('task_adhoc', ['userid' => $user->id]));
