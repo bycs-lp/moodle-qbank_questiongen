@@ -6,3 +6,4 @@ jobs:
     with:
       extra-plugins: |
         bycs-lp/moodle-local_ai_content
+        bycs-lp/moodle-local_ai_manager
