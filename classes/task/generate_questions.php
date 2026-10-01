@@ -161,7 +161,6 @@ class generate_questions extends \core\task\adhoc_task {
                 );
             }
         } catch (\Exception $exception) {
-            set_debugging(DEBUG_DEVELOPER, true);
             $usererrormessage = get_string('errorcreatingquestionscritical', 'qbank_questiongen');
             if ($exception instanceof \qbank_questiongen\local\questiongen_exception) {
                 // If we have a questiongen_exception, we overwrite the user-faced message with the one of
