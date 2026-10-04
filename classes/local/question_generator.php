@@ -110,10 +110,10 @@ EOT;
     /**
      * Renders the system prompt template.
      *
-     * The only Mustache feature that is being used is the conditional {{#sendexistingquestions}} block. The actual
-     * values (primer, instructions, example, existingquestionsjson) are substituted afterwards via str_replace, so
-     * that special characters in the values - most notably the XML angle brackets of the example - are never seen
-     * (and therefore never escaped or misinterpreted) by the Mustache engine.
+     * The conditional {{#sendexistingquestions}}...{{/sendexistingquestions}} block is resolved by a regular expression:
+     * If $sendexistingquestions is true, only the block markers are removed, otherwise the whole block is removed.
+     * Afterwards the values (primer, instructions, example, existingquestionsjson) are substituted verbatim
+     * by {@see self::substitute_placeholders()}.
      *
      * @param string $template the system prompt template
      * @param bool $sendexistingquestions whether the existing questions block should be included
@@ -122,40 +122,30 @@ EOT;
      * @return string the rendered system prompt
      */
     public static function render_system_prompt(string $template, bool $sendexistingquestions, array $values): string {
-        // Resolve the only conditional block via Mustache. We deliberately do NOT pass the scalar values here.
-        // Instead we feed each scalar placeholder its own literal placeholder string so it survives the render
-        // untouched and str_replace can inject the raw value afterwards. This way Mustache only decides whether the
-        // block is included and never touches the actual content.
-        $mustache = new \Mustache_Engine(['escape' => fn($value) => $value]);
-        $rendered = $mustache->render($template, [
-            'sendexistingquestions' => $sendexistingquestions,
-            'primer' => '{{primer}}',
-            'instructions' => '{{instructions}}',
-            'example' => '{{example}}',
-            'existingquestionsjson' => '{{existingquestionsjson}}',
-        ]);
-        return self::substitute_placeholders($rendered, $values);
+        $template = preg_replace(
+            '/{{#sendexistingquestions}}(.*?){{\/sendexistingquestions}}/s',
+            $sendexistingquestions ? '$1' : '',
+            $template
+        );
+        return self::substitute_placeholders($template, $values);
     }
 
     /**
-     * Substitutes {{key}} placeholders in a string with the given values using plain str_replace.
+     * Substitutes {{key}} placeholders in a string with the given values.
      *
-     * Using str_replace (instead of a templating engine) guarantees that the values are inserted verbatim without
-     * any escaping. This is essential for content like the example XML question which would otherwise be mangled.
-     * Even though we use Mustache-like syntax ({{...}}), the strings are not actually Mustache templates.
+     * strtr replaces all placeholders in a single pass, so the values are inserted verbatim without any escaping,
+     * and placeholders contained in a value are not replaced again.
      *
      * @param string $template the template string containing {{key}} placeholders
      * @param array $values associative array mapping placeholder names to their replacement values
      * @return string the string with all placeholders replaced
      */
     public static function substitute_placeholders(string $template, array $values): string {
-        $search = [];
-        $replace = [];
+        $replacements = [];
         foreach ($values as $key => $value) {
-            $search[] = '{{' . $key . '}}';
-            $replace[] = $value;
+            $replacements['{{' . $key . '}}'] = $value;
         }
-        return str_replace($search, $replace, $template);
+        return strtr($template, $replacements);
     }
 
     /**
@@ -182,9 +172,6 @@ EOT;
         $provider = get_config('qbank_questiongen', 'provider');
         if ($provider === 'local_ai_manager') {
             $systemprompttemplate = get_config('qbank_questiongen', 'systemprompt');
-            if (empty($systemprompttemplate)) {
-                $systemprompttemplate = self::get_default_system_prompt();
-            }
 
             $existingquestionsjson = '';
             if ($sendexistingquestionsascontext) {
@@ -222,14 +209,8 @@ EOT;
             // training data, whereas story/course contents mode restricts the LLM to the provided content.
             if ($dataobject->mode === story_form::QUESTIONGEN_MODE_TOPIC) {
                 $usermessagetemplate = get_config('qbank_questiongen', 'usermessagetopic');
-                if (empty($usermessagetemplate)) {
-                    $usermessagetemplate = self::get_default_usermessage_topic();
-                }
             } else {
                 $usermessagetemplate = get_config('qbank_questiongen', 'usermessagecontent');
-                if (empty($usermessagetemplate)) {
-                    $usermessagetemplate = self::get_default_usermessage_content();
-                }
             }
             $usermessage = self::substitute_placeholders($usermessagetemplate, ['story' => $story]);
 

@@ -133,6 +133,54 @@ final class question_generator_test extends \advanced_testcase {
     }
 
     /**
+     * Tests that values with special characters end up in the prompts exactly as they are.
+     *
+     * @param string $value the value to insert into all placeholders
+     * @dataProvider special_characters_provider
+     * @covers \qbank_questiongen\local\question_generator::render_system_prompt
+     * @covers \qbank_questiongen\local\question_generator::substitute_placeholders
+     */
+    public function test_special_characters_are_inserted_verbatim(string $value): void {
+        $template = 'P:{{primer}}|I:{{instructions}}|E:{{example}}|'
+            . '{{#sendexistingquestions}}J:{{existingquestionsjson}}{{/sendexistingquestions}}';
+        $values = [
+            'primer' => $value,
+            'instructions' => $value,
+            'example' => $value,
+            'existingquestionsjson' => $value,
+        ];
+
+        $this->assertSame(
+            'P:' . $value . '|I:' . $value . '|E:' . $value . '|J:' . $value,
+            question_generator::render_system_prompt($template, true, $values)
+        );
+        $this->assertSame(
+            'P:' . $value . '|I:' . $value . '|E:' . $value . '|',
+            question_generator::render_system_prompt($template, false, $values)
+        );
+        $this->assertSame(
+            'S:' . $value,
+            question_generator::substitute_placeholders('S:{{story}}', ['story' => $value])
+        );
+    }
+
+    /**
+     * Data provider for test_special_characters_are_inserted_verbatim.
+     *
+     * @return array[]
+     */
+    public static function special_characters_provider(): array {
+        return [
+            'umlauts_and_quotes' => ["#'ßÄöü\""],
+            'html' => ['<p class="x">a &amp; b<br></p>'],
+            'latex' => ['\(\frac{1}{2}\) and \[x^{2}\], $1, \1, ${1}, \\\\'],
+            'json' => ['{"a":"b {{primer}}","c":[1,{"d":null}]}'],
+            'xml' => ['<question type="multichoice"><text>2 < 3 && "true"</text><![CDATA[x]]></question>'],
+            'block_markers' => ['{{#sendexistingquestions}}x{{/sendexistingquestions}}'],
+        ];
+    }
+
+    /**
      * Tests the functionality that substitutes certain placeholders in a string.
      *
      * @covers \qbank_questiongen\local\question_generator::generate_question
@@ -258,18 +306,6 @@ final class question_generator_test extends \advanced_testcase {
         $this->assertStringContainsString('QUESTION GENERATION MODE - CONTENTS', $questionobject->usermessage);
         $this->assertStringContainsString($dataobject->story, $questionobject->usermessage);
         $this->assertStringNotContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->usermessage);
-
-        // Verify that empty prompt configs fall back to the built-in default templates (non-breaking upgrade check).
-        set_config('systemprompt', '', 'qbank_questiongen');
-        set_config('usermessagetopic', '', 'qbank_questiongen');
-        set_config('usermessagecontent', '', 'qbank_questiongen');
-        $dataobject->mode = story_form::QUESTIONGEN_MODE_TOPIC;
-        $dataobject->story = 'French revolution';
-        $questionobject = $questiongenerator->generate_question($dataobject, false);
-        $this->assertEquals($generatedxmlfixture, $questionobject->text);
-        $this->assertStringContainsString($presetjson->primer, $questionobject->systemprompt);
-        $this->assertStringContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->usermessage);
-        $this->assertStringContainsString($dataobject->story, $questionobject->usermessage);
     }
 
     /**
