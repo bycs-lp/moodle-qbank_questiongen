@@ -31,7 +31,14 @@ class generate_questions extends \core\task\adhoc_task {
 
     #[\Override]
     public function execute() {
-        global $DB;
+        global $CFG, $DB;
+
+        // We want full developer debugging output in the task log, but must not change the debugging settings for the rest
+        // of the cron process. So we enable developer debugging only for this task and restore the original settings in the
+        // finally block. On web cron we keep the site's display setting, so nothing is written into the HTTP response.
+        $originaldebug = $CFG->debug;
+        $originaldebugdisplay = $CFG->debugdisplay;
+        set_debugging(DEBUG_DEVELOPER, CLI_SCRIPT ? true : $originaldebugdisplay);
 
         try {
             $customdata = $this->get_custom_data();
@@ -161,7 +168,6 @@ class generate_questions extends \core\task\adhoc_task {
                 );
             }
         } catch (\Exception $exception) {
-            set_debugging(DEBUG_DEVELOPER, true);
             $usererrormessage = get_string('errorcreatingquestionscritical', 'qbank_questiongen');
             if ($exception instanceof \qbank_questiongen\local\questiongen_exception) {
                 // If we have a questiongen_exception, we overwrite the user-faced message with the one of
@@ -170,6 +176,9 @@ class generate_questions extends \core\task\adhoc_task {
             }
             mtrace('Exception thrown during task. Task will not be requeued. This is just for debugging purposes.');
             mtrace('Exception message: ' . $exception->getMessage());
+            if ($exception instanceof \moodle_exception) {
+                mtrace('Exception debug info: ' . $exception->debuginfo);
+            }
             mtrace('Exception stack trace:');
             mtrace($exception->getTraceAsString());
             if ($this->progress->get_percent() === 0.0) {
@@ -178,6 +187,8 @@ class generate_questions extends \core\task\adhoc_task {
                 $this->progress->update_full(100, '');
             }
             $this->progress->error($usererrormessage);
+        } finally {
+            set_debugging($originaldebug, $originaldebugdisplay);
         }
     }
 
