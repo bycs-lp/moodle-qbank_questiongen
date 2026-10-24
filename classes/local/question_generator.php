@@ -458,7 +458,7 @@ EOT;
                 mtrace($result->get_debuginfo());
             }
             // Return the error message.
-            $result['errormessage'] = $result->get_errormessage();
+            $return['errormessage'] = $result->get_errormessage();
         }
         return $return;
     }
