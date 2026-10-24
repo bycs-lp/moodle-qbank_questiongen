@@ -235,11 +235,12 @@ final class question_generator_test extends \advanced_testcase {
         // The example XML must be contained verbatim, i.e. it must not have been escaped by any templating engine.
         $this->assertStringContainsString($dataobject->example, $questionobject->systemprompt);
         $this->assertStringNotContainsString('ALREADY EXISTING QUESTIONS', $questionobject->systemprompt);
+        $this->assertEmpty($questionobject->questiontextsinqbankprompt);
         $this->assertStringNotContainsString('QUESTION GENERATION MODE', $questionobject->systemprompt);
         // The concrete instruction and the story go into the user message. In topic mode this is the topic template.
-        $this->assertStringContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->usermessage);
-        $this->assertStringContainsString($dataobject->story, $questionobject->usermessage);
-        $this->assertStringNotContainsString('QUESTION GENERATION MODE - CONTENTS', $questionobject->usermessage);
+        $this->assertStringContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->storyprompt);
+        $this->assertStringContainsString($dataobject->story, $questionobject->storyprompt);
+        $this->assertStringNotContainsString('QUESTION GENERATION MODE - CONTENTS', $questionobject->storyprompt);
 
         // Now test if sending questions as context works.
         $questionplugingenerator->create_question(
@@ -273,6 +274,7 @@ final class question_generator_test extends \advanced_testcase {
         $questionobject = $questiongenerator->generate_question($dataobject, true);
         $this->assertEquals($generatedxmlfixture, $questionobject->text);
         $this->assertStringContainsString('ALREADY EXISTING QUESTIONS', $questionobject->systemprompt);
+        $this->assertStringContainsString('Test question 1', $questionobject->questiontextsinqbankprompt);
         $this->assertStringContainsString('Test question 1', $questionobject->systemprompt);
         $this->assertStringContainsString('Write some intelligent stuff', $questionobject->systemprompt);
         $this->assertStringContainsString('Test question 2', $questionobject->systemprompt);
@@ -293,19 +295,19 @@ final class question_generator_test extends \advanced_testcase {
         $this->assertEquals($presetjson->example, $questionobject->example);
         $this->assertStringContainsString($presetjson->primer, $questionobject->systemprompt);
         $this->assertStringNotContainsString('QUESTION GENERATION MODE', $questionobject->systemprompt);
-        $this->assertStringContainsString('QUESTION GENERATION MODE - CONTENTS', $questionobject->usermessage);
-        $this->assertStringContainsString('START OF USER PROVIDED CONTENT', $questionobject->usermessage);
-        $this->assertStringContainsString($dataobject->story, $questionobject->usermessage);
-        $this->assertStringNotContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->usermessage);
+        $this->assertStringContainsString('QUESTION GENERATION MODE - CONTENTS', $questionobject->storyprompt);
+        $this->assertStringContainsString('START OF USER PROVIDED CONTENT', $questionobject->storyprompt);
+        $this->assertStringContainsString($dataobject->story, $questionobject->storyprompt);
+        $this->assertStringNotContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->storyprompt);
 
         // Test course contents mode (same behaviour/user message template as story mode).
         $dataobject->mode = story_form::QUESTIONGEN_MODE_COURSECONTENTS;
         $dataobject->story = 'This is a lot of content that the LLM can use to generate questions from.';
         $questionobject = $questiongenerator->generate_question($dataobject, false);
         $this->assertEquals($generatedxmlfixture, $questionobject->text);
-        $this->assertStringContainsString('QUESTION GENERATION MODE - CONTENTS', $questionobject->usermessage);
-        $this->assertStringContainsString($dataobject->story, $questionobject->usermessage);
-        $this->assertStringNotContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->usermessage);
+        $this->assertStringContainsString('QUESTION GENERATION MODE - CONTENTS', $questionobject->storyprompt);
+        $this->assertStringContainsString($dataobject->story, $questionobject->storyprompt);
+        $this->assertStringNotContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->storyprompt);
     }
 
     /**

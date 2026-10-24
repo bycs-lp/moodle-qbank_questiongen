@@ -168,12 +168,12 @@ EOT;
         $generatedquestiontext = '';
         $systemprompt = '';
         $usermessage = '';
+        $existingquestionsjson = '';
 
         $provider = get_config('qbank_questiongen', 'provider');
         if ($provider === 'local_ai_manager') {
             $systemprompttemplate = get_config('qbank_questiongen', 'systemprompt');
 
-            $existingquestionsjson = '';
             if ($sendexistingquestionsascontext) {
                 $questionidsincategory = question_bank::get_finder()->get_questions_from_categories(
                     [$dataobject->category],
@@ -237,11 +237,12 @@ EOT;
 
         // We return a whole question object containing all the generated data. This can be used for unit tests or logging.
         $question = new stdClass();
-        $question->example = $example;
-        $question->instructions = $instructions;
         $question->primer = $primer;
+        $question->instructions = $instructions;
+        $question->example = $example;
         $question->systemprompt = $systemprompt;
-        $question->usermessage = $usermessage;
+        $question->storyprompt = $usermessage;
+        $question->questiontextsinqbankprompt = $existingquestionsjson;
         $question->text = $generatedquestiontext;
 
         return $question;
