@@ -172,9 +172,6 @@ EOT;
         $provider = get_config('qbank_questiongen', 'provider');
         if ($provider === 'local_ai_manager') {
             $systemprompttemplate = get_config('qbank_questiongen', 'systemprompt');
-            if (empty($systemprompttemplate)) {
-                $systemprompttemplate = self::get_default_system_prompt();
-            }
 
             $existingquestionsjson = '';
             if ($sendexistingquestionsascontext) {
@@ -212,14 +209,8 @@ EOT;
             // training data, whereas story/course contents mode restricts the LLM to the provided content.
             if (intval($dataobject->mode) === story_form::QUESTIONGEN_MODE_TOPIC) {
                 $usermessagetemplate = get_config('qbank_questiongen', 'usermessagetopic');
-                if (empty($usermessagetemplate)) {
-                    $usermessagetemplate = self::get_default_usermessage_topic();
-                }
             } else {
                 $usermessagetemplate = get_config('qbank_questiongen', 'usermessagecontent');
-                if (empty($usermessagetemplate)) {
-                    $usermessagetemplate = self::get_default_usermessage_content();
-                }
             }
             $usermessage = self::substitute_placeholders($usermessagetemplate, ['story' => $story]);
 

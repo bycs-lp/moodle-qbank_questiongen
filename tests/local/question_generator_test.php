@@ -258,18 +258,6 @@ final class question_generator_test extends \advanced_testcase {
         $this->assertStringContainsString('QUESTION GENERATION MODE - CONTENTS', $questionobject->usermessage);
         $this->assertStringContainsString($dataobject->story, $questionobject->usermessage);
         $this->assertStringNotContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->usermessage);
-
-        // Verify that empty prompt configs fall back to the built-in default templates (non-breaking upgrade check).
-        set_config('systemprompt', '', 'qbank_questiongen');
-        set_config('usermessagetopic', '', 'qbank_questiongen');
-        set_config('usermessagecontent', '', 'qbank_questiongen');
-        $dataobject->mode = story_form::QUESTIONGEN_MODE_TOPIC;
-        $dataobject->story = 'French revolution';
-        $questionobject = $questiongenerator->generate_question($dataobject, false);
-        $this->assertEquals($generatedxmlfixture, $questionobject->text);
-        $this->assertStringContainsString($presetjson->primer, $questionobject->systemprompt);
-        $this->assertStringContainsString('QUESTION GENERATION MODE - TOPIC', $questionobject->usermessage);
-        $this->assertStringContainsString($dataobject->story, $questionobject->usermessage);
     }
 
     /**
