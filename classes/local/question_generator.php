@@ -172,7 +172,8 @@ EOT;
 
         $provider = get_config('qbank_questiongen', 'provider');
         if ($provider === 'local_ai_manager') {
-            $systemprompttemplate = get_config('qbank_questiongen', 'systemprompt');
+            // Text areas save line breaks as \r\n, the default templates use \n.
+            $systemprompttemplate = str_replace(["\r\n", "\r"], "\n", get_config('qbank_questiongen', 'systemprompt'));
 
             if ($sendexistingquestionsascontext) {
                 $questionidsincategory = question_bank::get_finder()->get_questions_from_categories(
@@ -212,6 +213,7 @@ EOT;
             } else {
                 $usermessagetemplate = get_config('qbank_questiongen', 'usermessagecontent');
             }
+            $usermessagetemplate = str_replace(["\r\n", "\r"], "\n", $usermessagetemplate);
             $usermessage = self::substitute_placeholders($usermessagetemplate, ['story' => $story]);
 
             $messages = [

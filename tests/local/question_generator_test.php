@@ -311,6 +311,35 @@ final class question_generator_test extends \advanced_testcase {
     }
 
     /**
+     * Tests that the line breaks of the prompt templates are normalized, but the values are inserted as they are.
+     *
+     * @covers \qbank_questiongen\local\question_generator::generate_question
+     */
+    public function test_generate_question_normalizes_template_line_breaks(): void {
+        $this->resetAfterTest();
+        set_config('provider', 'local_ai_manager', 'qbank_questiongen');
+        set_config('systemprompt', "A\r\n{{primer}}\rB", 'qbank_questiongen');
+        set_config('usermessagetopic', "C\r\n{{story}}", 'qbank_questiongen');
+        set_config('usermessagecontent', 'D', 'qbank_questiongen');
+
+        $questiongenerator = $this->getMockBuilder(question_generator::class)
+            ->setConstructorArgs([\context_system::instance()->id])->onlyMethods(['retrieve_llm_response'])->getMock();
+        $questiongenerator->method('retrieve_llm_response')->willReturn(['generatedquestiontext' => '', 'errormessage' => '']);
+
+        // The mode is read from the database as a string.
+        $dataobject = (object) [
+            'mode' => (string) story_form::QUESTIONGEN_MODE_TOPIC,
+            'story' => "x\r\ny",
+            'primer' => "p\r\nq",
+            'instructions' => 'i',
+            'example' => 'e',
+        ];
+        $questionobject = $questiongenerator->generate_question($dataobject, false);
+        $this->assertSame("A\np\r\nq\nB", $questionobject->systemprompt);
+        $this->assertSame("C\nx\r\ny", $questionobject->storyprompt);
+    }
+
+    /**
      * Tests the extracting of content from course modules.
      *
      * @covers \qbank_questiongen\local\question_generator::extract_content_from_cm
