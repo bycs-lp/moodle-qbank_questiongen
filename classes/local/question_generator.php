@@ -210,7 +210,7 @@ EOT;
 
             // Select the user message template depending on the generation mode. Topic mode lets the LLM use its own
             // training data, whereas story/course contents mode restricts the LLM to the provided content.
-            if ($dataobject->mode === story_form::QUESTIONGEN_MODE_TOPIC) {
+            if (intval($dataobject->mode) === story_form::QUESTIONGEN_MODE_TOPIC) {
                 $usermessagetemplate = get_config('qbank_questiongen', 'usermessagetopic');
                 if (empty($usermessagetemplate)) {
                     $usermessagetemplate = self::get_default_usermessage_topic();
