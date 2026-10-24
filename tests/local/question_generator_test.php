@@ -133,6 +133,18 @@ final class question_generator_test extends \advanced_testcase {
     }
 
     /**
+     * Tests that placeholders contained in a value are not replaced again.
+     *
+     * @covers \qbank_questiongen\local\question_generator::substitute_placeholders
+     */
+    public function test_placeholders_in_values_are_not_replaced(): void {
+        $this->assertSame(
+            'P:{{example}}|E:x',
+            question_generator::substitute_placeholders('P:{{primer}}|E:{{example}}', ['primer' => '{{example}}', 'example' => 'x'])
+        );
+    }
+
+    /**
      * Tests that values with special characters end up in the prompts exactly as they are.
      *
      * @param string $value the value to insert into all placeholders
