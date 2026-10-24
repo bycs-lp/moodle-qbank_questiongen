@@ -340,6 +340,33 @@ final class question_generator_test extends \advanced_testcase {
     }
 
     /**
+     * Tests that {{currentlang}} is replaced in the prompt templates.
+     *
+     * @covers \qbank_questiongen\local\question_generator::generate_question
+     */
+    public function test_generate_question_replaces_currentlang(): void {
+        $this->resetAfterTest();
+        set_config('provider', 'local_ai_manager', 'qbank_questiongen');
+        set_config('systemprompt', 'S:{{currentlang}}', 'qbank_questiongen');
+        set_config('usermessagecontent', 'U:{{currentlang}}', 'qbank_questiongen');
+
+        $questiongenerator = $this->getMockBuilder(question_generator::class)
+            ->setConstructorArgs([\context_system::instance()->id])->onlyMethods(['retrieve_llm_response'])->getMock();
+        $questiongenerator->method('retrieve_llm_response')->willReturn(['generatedquestiontext' => '', 'errormessage' => '']);
+
+        $dataobject = (object) [
+            'mode' => story_form::QUESTIONGEN_MODE_STORY,
+            'story' => 's',
+            'primer' => 'p',
+            'instructions' => 'i',
+            'example' => 'e',
+        ];
+        $questionobject = $questiongenerator->generate_question($dataobject, false);
+        $this->assertSame('S:English', $questionobject->systemprompt);
+        $this->assertSame('U:English', $questionobject->storyprompt);
+    }
+
+    /**
      * Tests the extracting of content from course modules.
      *
      * @covers \qbank_questiongen\local\question_generator::extract_content_from_cm

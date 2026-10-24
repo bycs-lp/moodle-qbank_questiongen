@@ -195,6 +195,7 @@ EOT;
                 }
             }
 
+            $currentlang = \Locale::getDisplayLanguage(current_language(), 'en');
             $systemprompt = self::render_system_prompt(
                 $systemprompttemplate,
                 !empty($existingquestionsjson),
@@ -203,6 +204,7 @@ EOT;
                     'instructions' => $instructions,
                     'example' => $example,
                     'existingquestionsjson' => $existingquestionsjson,
+                    'currentlang' => $currentlang,
                 ]
             );
 
@@ -214,7 +216,10 @@ EOT;
                 $usermessagetemplate = get_config('qbank_questiongen', 'usermessagecontent');
             }
             $usermessagetemplate = str_replace(["\r\n", "\r"], "\n", $usermessagetemplate);
-            $usermessage = self::substitute_placeholders($usermessagetemplate, ['story' => $story]);
+            $usermessage = self::substitute_placeholders(
+                $usermessagetemplate,
+                ['story' => $story, 'currentlang' => $currentlang]
+            );
 
             $messages = [
                 [

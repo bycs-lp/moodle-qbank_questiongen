@@ -137,6 +137,7 @@ $string['systempromptdesc'] = 'This template is sent to the AI as the system pro
 <li><strong>{{instructions}}</strong> – instructions text from the preset</li>
 <li><strong>{{example}}</strong> – example output from the preset</li>
 <li><strong>{{existingquestionsjson}}</strong> – existing questions in the category as JSON (only relevant inside the sendexistingquestions block)</li>
+<li><strong>{{currentlang}}</strong> – the current language of the user, for example "English"</li>
 </ul>
 <strong>Conditional block</strong> uses the syntax <strong>{{#name}}...{{/name}}</strong> and is only included when the condition is active:<br>
 <ul>
@@ -148,15 +149,17 @@ $string['topic_help'] = 'The topic of your questions. Describe the topic you wan
 $string['usermessagecontent'] = 'User message template (content mode)';
 $string['usermessagecontentdesc'] = 'This template is sent to the AI as the user message when the question is generated in "Provide content" or "Course contents" mode, i.e. the AI must only use the provided content and not its own training data.<br>
 <br>
-<strong>Placeholder:</strong><br>
+<strong>Placeholders:</strong><br>
 <ul>
 <li><strong>{{story}}</strong> – the content provided by the user</li>
+<li><strong>{{currentlang}}</strong> – the current language of the user, for example "English"</li>
 </ul>';
 $string['usermessagetopic'] = 'User message template (topic mode)';
 $string['usermessagetopicdesc'] = 'This template is sent to the AI as the user message when the question is generated in "Topic" mode, i.e. the AI uses its own training data.<br>
 <br>
-<strong>Placeholder:</strong><br>
+<strong>Placeholders:</strong><br>
 <ul>
 <li><strong>{{story}}</strong> – the topic provided by the user</li>
+<li><strong>{{currentlang}}</strong> – the current language of the user, for example "English"</li>
 </ul>';
 $string['waitingforadhoctaskstart'] = 'Waiting for background task to start';
